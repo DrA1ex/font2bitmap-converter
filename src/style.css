@@ -108,11 +108,11 @@ h3 {
 }
 
 #preview {
-    user-select: none;
-    text-align: center;
-    color: #333;
+    flex: 1;
+    justify-content: stretch;
+    align-items: stretch;
 
-    scale: 2;
+    image-rendering: pixelated;
 }
 
 form {

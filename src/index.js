@@ -5,8 +5,10 @@
 // This file may be distributed under the terms of the GNU GPLv3 license
 
 
+import * as CommonUtils from "./utils/common.js"
 import * as FileUtils from "./utils/file.js"
 import * as Bitmap from "./bitmap.js"
+import { TextDrawer } from "./drawer.js";
 
 const BuiltinFonts = [
     "Roboto",
@@ -20,35 +22,33 @@ const BuiltinFonts = [
 const UserFonts = [];
 
 const FontRanges = {
-    "default": generateString(' ', '~'),
-    "russian": generateString(' ', '~') + generateString('А', 'Я') + generateString('а', 'я') + "ёЁ",
+    "default": CommonUtils.generateString(' ', '~'),
+    "light": CommonUtils.generateString('a', 'z', 'A', 'Z', '0', '9') + " ,.!?",
+    "russian": CommonUtils.generateString(' ', '~', 'А', 'Я', 'а', 'я') + "ёЁ",
 }
 
-function generateString(from, to) {
-    return new Array(to.charCodeAt() - from.charCodeAt() + 1)
-        .fill(0)
-        .map((_, i) => String.fromCharCode(from.charCodeAt() + i))
-        .join("");
+const Cache = {
+    fontName: null,
+    fontSize: null,
+    bitmapFont: null
 }
 
-function capitalize(str) {
-    function isDigit(char) {
-        return char >= '0' && char <= '9';
-    }
+const Canvas = document.getElementById("preview");
 
-    return str.split(" ")
-        .map(s => s.replaceAll(/[^A-Za-z0-9]/g, ""))
-        .filter(s => s.length)
-        .map(s => /\d+/.test(s) ? s : `${s[0].toUpperCase()}${s.slice(1)}`)
-        .reduce((prev, cur) => {
-            if ((!prev || isDigit(prev.at(-1))) && isDigit(cur[0])) {
-                prev += "_";
-            }
-            prev += cur;
+const rect = Canvas.getBoundingClientRect();
+Canvas.style.width = rect.width + "px";
+Canvas.style.height = rect.height + "px"
+Canvas.style.flex = "0";
+Canvas.width = rect.width * devicePixelRatio;
+Canvas.height = rect.height * devicePixelRatio;
 
-            return prev;
-        }, "")
-}
+const Context = Canvas.getContext("2d");
+Context.imageSmoothingEnabled = false;
+
+const Drawer = new TextDrawer(Context);
+Drawer.setColor(0xff000000);
+Drawer.setBackgroundColor(0);
+
 
 async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
@@ -85,23 +85,23 @@ async function uploadFont() {
     fontForm.appendChild(document.createElement('br'));
 }
 
-function downloadFont() {
+async function downloadFont() {
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseInt(document.getElementById('sizefield').value);
 
-    downloadFontImpl(selectedFont, fontSize);
+    await downloadFontImpl(selectedFont, fontSize);
 }
 
-function downloadAllFonts() {
+async function downloadAllFonts() {
     for (const fontName of BuiltinFonts.concat(UserFonts))
         for (const size of [9, 12, 18, 24]) {
-            downloadFontImpl(fontName, size);
+            await downloadFontImpl(fontName, size);
         }
 }
 
-function downloadFontImpl(selectedFont, fontSize) {
-    const font = Bitmap.convertFontToBitmap(selectedFont, fontSize, FontRanges.default);
-    const fontName = capitalize(font.name);
+async function downloadFontImpl(selectedFont, fontSize, range = FontRanges.default) {
+    const font = await loadFont(selectedFont, fontSize, range)
+    const fontName = CommonUtils.capitalize(font.name);
 
     let result = `#pragma once\n\n`
         + `#include "./types.h"\n\n`
@@ -172,16 +172,34 @@ function getSelectedFont() {
     return document.getElementById("fontForm").elements["font"].value;
 }
 
-function refreshPreview() {
+async function loadFont(selectedFont, fontSize, range = FontRanges.default) {
+    if (Cache.fontName !== selectedFont || Cache.fontSize !== fontSize || !Cache.bitmapFont) {
+        const fontFace = document.fonts.values().find(f => f.family === selectedFont);
+        if (!fontFace) throw new Error(`Unknown font ${fontName}`)
+
+        await fontFace.load();
+
+        Cache.fontName = selectedFont;
+        Cache.fontSize = fontSize;
+        Cache.bitmapFont = Bitmap.convertFontToBitmap(selectedFont, fontSize, range);
+    }
+
+    return Cache.bitmapFont
+}
+
+async function refreshPreview() {
     const text = document.getElementById("textfield").value;
-    const size = Number.parseInt(document.getElementById("sizefield").value);
-    const font = getSelectedFont();
+    const selectedFont = getSelectedFont();
+    const fontSize = Number.parseInt(document.getElementById("sizefield").value);
 
+    const bitmapFont = await loadFont(selectedFont, fontSize);
+    Drawer.setFont(bitmapFont);
 
-    const preview = document.getElementById("preview");
-    preview.style.fontFamily = font;
-    preview.style.fontSize = `${size}px`;
-    preview.textContent = text;
+    Context.clearRect(0, 0, Canvas.width, Canvas.height);
+
+    const boundary = Drawer.calcTextBoundaries(text);
+    Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
+    Drawer.print(text);
 }
 
 document.getElementById("textfield").addEventListener("keyup", () => refreshPreview());

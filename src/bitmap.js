@@ -78,7 +78,7 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
         const height = Math.max(1, Math.ceil(Math.abs(metrics.actualBoundingBoxAscent)
             + Math.abs(metrics.actualBoundingBoxDescent)));
 
-        // Adjust the canvas size if necessary
+        // Adjust the canvas size
         canvas.width = width;
         canvas.height = height;
 
