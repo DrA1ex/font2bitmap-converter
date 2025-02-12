@@ -1,0 +1,62 @@
+<!--
+*
+* Bitmap generation app
+* 
+* Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
+* 
+* This file may be distributed under the terms of the GNU GPLv3 license
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Converting fonts from TrueType to Bitmap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./style.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            Converting fonts from TrueType to Bitmap
+        </div>
+
+        <div class="block font">
+            <h3>Fonts</h3>
+            <form id="fontForm">
+                <input type="radio" name="font" value="Roboto" checked> Roboto<br>
+                <input type="radio" name="font" value="Roboto Bold"> Roboto Bold<br>
+                <input type="radio" name="font" value="Roboto Thin"> Roboto Thin<br>
+                <input type="radio" name="font" value="JetBrainsMono"> JetBrainsMono<br>
+                <input type="radio" name="font" value="JetBrainsMono Bold"> JetBrainsMono Bold<br>
+                <input type="radio" name="font" value="JetBrainsMono Thin"> JetBrainsMono Thin<br>
+            </form>
+
+            <br>
+
+            <button id="upload-font">Upload</button>
+        </div>
+
+        <div class="block parameters">
+            <h3>Font Size</h3>
+            <input type="number" id="sizefield" value="20" min="1"> <br><br>
+
+            <h3>Demo text</h3>
+            <input type="text" id="textfield" value="Hello, World!"><br><br>
+
+            <button id="get-font">Get Font File</button>
+            <br/>
+            <button id="get-all-fonts">Get All Fonts</button>
+        </div>
+
+        <div class="block preview">
+            <div id="preview">
+            </div>
+        </div>
+    </div>
+
+    <script src="./index.js" type="module"></script>
+</body>
+
+</html>

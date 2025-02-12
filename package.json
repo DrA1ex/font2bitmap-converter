@@ -1,0 +1,13 @@
+{
+  "name": "font-converter",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "author": "Alexander K",
+  "license": "GPL-3.0",
+  "dependencies": {},
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
