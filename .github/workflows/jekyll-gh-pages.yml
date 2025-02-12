@@ -41,8 +41,9 @@ jobs:
         with:
           source: ./bundle/
           destination: ./_site
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3.0.1
+        
 
   # Deployment job
   deploy:
