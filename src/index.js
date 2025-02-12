@@ -32,7 +32,8 @@ const ExportSizes = [12, 16, 20, 28]
 const Cache = {
     fontName: null,
     fontSize: null,
-    bitmapFont: null
+    range: null,
+    bitmapFont: null,
 }
 
 const Canvas = document.getElementById("preview");
@@ -75,19 +76,11 @@ async function uploadFont() {
 }
 
 function addFont(fontName) {
-    const fontRadio = document.createElement('input');
-    fontRadio.type = 'radio';
-    fontRadio.name = 'font';
-    fontRadio.value = fontName;
+    const option = document.createElement("option");
+    option.setAttribute("value", fontName)
+    option.textContent = fontName;
 
-    const fontLabel = document.createElement('span');
-    fontLabel.className = "font-label";
-    fontLabel.textContent = fontName
-
-    const fontForm = document.getElementById("fontForm");
-    fontForm.appendChild(fontRadio);
-    fontForm.appendChild(fontLabel);
-    fontForm.appendChild(document.createElement('br'));
+    document.getElementById("font-select").appendChild(option);
 }
 
 async function downloadFont() {
@@ -174,11 +167,11 @@ async function downloadFontImpl(selectedFont, fontSize, range = FontRanges.defau
 }
 
 function getSelectedFont() {
-    return document.getElementById("fontForm").elements["font"].value;
+    return document.getElementById("font-select").value;
 }
 
 async function loadFont(selectedFont, fontSize, range = FontRanges.default) {
-    if (Cache.fontName !== selectedFont || Cache.fontSize !== fontSize || !Cache.bitmapFont) {
+    if (Cache.fontName !== selectedFont || Cache.fontSize !== fontSize || Cache.range !== range || !Cache.bitmapFont) {
         const fontFace = document.fonts.values().find(f => f.family === selectedFont);
         if (!fontFace) throw new Error(`Unknown font ${fontName}`)
 
@@ -186,6 +179,7 @@ async function loadFont(selectedFont, fontSize, range = FontRanges.default) {
 
         Cache.fontName = selectedFont;
         Cache.fontSize = fontSize;
+        Cache.range = range;
         Cache.bitmapFont = Bitmap.convertFontToBitmap(selectedFont, fontSize, range);
     }
 
@@ -196,8 +190,9 @@ async function refreshPreview() {
     const text = document.getElementById("textfield").value;
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseInt(document.getElementById("sizefield").value);
+    const range = document.getElementById("range-select").value;
 
-    const bitmapFont = await loadFont(selectedFont, fontSize);
+    const bitmapFont = await loadFont(selectedFont, fontSize, FontRanges[range] || FontRanges.default);
     Drawer.setFont(bitmapFont);
 
     Context.clearRect(0, 0, Canvas.width, Canvas.height);
@@ -211,11 +206,18 @@ for (const fontName of BuiltinFonts) {
     addFont(fontName);
 }
 
-document.getElementById("fontForm").elements[0].setAttribute("checked", "");
+for (const key of Object.keys(FontRanges)) {
+    const option = document.createElement("option");
+    option.setAttribute("value", key)
+    option.textContent = key;
+    document.getElementById("range-select").appendChild(option);
+}
+
 
 document.getElementById("textfield").addEventListener("keyup", () => refreshPreview());
 document.getElementById("sizefield").addEventListener("change", () => refreshPreview());
-document.getElementById("fontForm").addEventListener("change", () => refreshPreview());
+document.getElementById("font-select").addEventListener("change", () => refreshPreview());
+document.getElementById("range-select").addEventListener("change", () => refreshPreview());
 
 document.getElementById("upload-font").addEventListener("click", () => uploadFont());
 document.getElementById("get-font").addEventListener("click", () => downloadFont());

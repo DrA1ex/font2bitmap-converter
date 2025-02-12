@@ -56,8 +56,8 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
 
     const correctedFontSize = Math.floor((fontSize * dpi) / 96);
 
-    const codes = Array.from(charSet).map(c => c.charCodeAt(0))
-        .sort((a, b) => a > b);
+    const codes = Array.from(charSet).map(c => c.charCodeAt(0));
+    codes.sort((a, b) => a - b);
 
     const codeFrom = codes[0];
     const codeTo = codes.at(-1);
@@ -83,7 +83,6 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
         canvas.width = width;
         canvas.height = height;
 
-        context.imageSmoothingEnabled = false;
         context.font = `${correctedFontSize}px ${fontName}`;
         context.textBaseline = "top";
         context.textRendering = "geometricPrecision";

@@ -11,7 +11,7 @@
 <html>
 
 <head>
-    <title>Converting fonts from TrueType to Bitmap</title>
+    <title>TrueType to Bitmap Converter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./style.css" rel="stylesheet" />
 </head>
@@ -19,25 +19,35 @@
 <body>
     <div class="container">
         <div class="header">
-            Converting fonts from TrueType to Bitmap
+            TrueType to Bitmap Font Converter
         </div>
 
         <div class="block font">
-            <h3>Fonts</h3>
-            <form id="fontForm">
-            </form>
+            <h3>Font</h3>
+            <select id="font-select">
+            </select>
 
-            <br>
+            <br><br>
 
             <button id="upload-font">Upload</button>
         </div>
 
         <div class="block parameters">
             <h3>Font Size</h3>
-            <input type="number" id="sizefield" value="20" min="1"> <br><br>
+            <input type="number" id="sizefield" value="20" min="1">
+
+            <br><br>
 
             <h3>Demo text</h3>
-            <input type="text" id="textfield" value="Hello, World!"><br><br>
+            <input type="text" id="textfield" value="Hello, World!">
+
+            <br><br>
+
+            <h3>Glyphs range</h3>
+            <select id="range-select">
+            </select>
+
+            <br><br>
 
             <button id="get-font">Get Font File</button>
             <br />

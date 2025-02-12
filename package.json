@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "prepare": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/",
+    "serve": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --servedir=./bundle --watch",
+    "bundle": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle"
+  },
   "author": "Alexander K",
   "license": "GPL-3.0",
   "dependencies": {},
