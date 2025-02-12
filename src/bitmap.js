@@ -5,6 +5,7 @@
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
+const AlphaThreshold = 128;
 
 class Glyph {
     offset = 0;
@@ -53,7 +54,7 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
 
     document.body.appendChild(canvas);
 
-    const correctedFontSize = (fontSize * dpi) / 96;
+    const correctedFontSize = Math.floor((fontSize * dpi) / 96);
 
     const codes = Array.from(charSet).map(c => c.charCodeAt(0))
         .sort((a, b) => a > b);
@@ -99,7 +100,7 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
             for (let x = 0; x < width; x++) {
                 const alpha = imageData.data[(y * imageData.width + x) * 4 + 3];
 
-                if (alpha > 0) {
+                if (alpha >= AlphaThreshold) {
                     rowByte |= 1 << (7 - bitIndex);
                 }
 

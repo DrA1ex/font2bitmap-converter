@@ -27,6 +27,8 @@ const FontRanges = {
     "russian": CommonUtils.generateString(' ', '~', 'А', 'Я', 'а', 'я') + "ёЁ",
 }
 
+const ExportSizes = [12, 16, 20, 28]
+
 const Cache = {
     fontName: null,
     fontSize: null,
@@ -63,21 +65,24 @@ async function uploadFont() {
     } catch (e) {
         console.error(e);
         alert("Unable to load font!");
+        return;
     }
 
     document.fonts.add(font);
-
     UserFonts.push(font.family);
-    document.getElementById("upload-font").file = undefined;
 
+    addFont(font.family);
+}
 
+function addFont(fontName) {
     const fontRadio = document.createElement('input');
     fontRadio.type = 'radio';
     fontRadio.name = 'font';
-    fontRadio.value = font.family;
+    fontRadio.value = fontName;
 
-    const fontLabel = document.createElement('label');
-    fontLabel.textContent = font.family;
+    const fontLabel = document.createElement('span');
+    fontLabel.className = "font-label";
+    fontLabel.textContent = fontName
 
     const fontForm = document.getElementById("fontForm");
     fontForm.appendChild(fontRadio);
@@ -94,7 +99,7 @@ async function downloadFont() {
 
 async function downloadAllFonts() {
     for (const fontName of BuiltinFonts.concat(UserFonts))
-        for (const size of [9, 12, 18, 24]) {
+        for (const size of ExportSizes) {
             await downloadFontImpl(fontName, size);
         }
 }
@@ -201,6 +206,12 @@ async function refreshPreview() {
     Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
     Drawer.print(text);
 }
+
+for (const fontName of BuiltinFonts) {
+    addFont(fontName);
+}
+
+document.getElementById("fontForm").elements[0].setAttribute("checked", "");
 
 document.getElementById("textfield").addEventListener("keyup", () => refreshPreview());
 document.getElementById("sizefield").addEventListener("change", () => refreshPreview());

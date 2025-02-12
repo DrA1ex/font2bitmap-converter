@@ -92,6 +92,8 @@ h3 {
 .block.font {
     grid-column: 1;
     grid-row: 2;
+
+    min-width: 15rem;
 }
 
 .block.parameters {
@@ -113,6 +115,11 @@ h3 {
     align-items: stretch;
 
     image-rendering: pixelated;
+}
+
+.font-label {
+    padding-left: 0.25rem;
+    font-size: 1rem;
 }
 
 form {
