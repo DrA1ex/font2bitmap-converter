@@ -1,4 +1,3 @@
-
 // Bitmap generation
 //
 // Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
@@ -27,10 +26,11 @@ class Font {
 
 /**
  * Converts given font with specified parameters to bitmap and stores glyphs & buffer data.
- * 
+ *
  * @param {string} fontName - Name of the font.
- * @param {Object} fontParameters - Details about the font properties (e.g., input font size).
+ * @param {Object} fontSize - Font size in px
  * @param {string} charSet - String of characters in this font range.
+ * @param {number} [dpi=222]- Screen DPI
  * @returns {Font} - A Font object representing all glyphs with their bitmapped data.
  */
 export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {

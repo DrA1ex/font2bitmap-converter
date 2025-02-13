@@ -8,7 +8,7 @@
 import * as CommonUtils from "./utils/common.js"
 import * as FileUtils from "./utils/file.js"
 import * as Bitmap from "./bitmap.js"
-import { TextDrawer } from "./drawer.js";
+import {TextDrawer} from "./drawer.js";
 
 const BuiltinFonts = [
     "Roboto",
@@ -85,7 +85,7 @@ function addFont(fontName) {
 
 async function downloadFont() {
     const selectedFont = getSelectedFont();
-    const fontSize = Number.parseInt(document.getElementById('sizefield').value);
+    const fontSize = Number.parseInt(document.getElementById('size-field').value);
 
     await downloadFontImpl(selectedFont, fontSize);
 }
@@ -163,7 +163,7 @@ async function downloadFontImpl(selectedFont, fontSize, range = FontRanges.defau
 
     result += `\n// Total size: ${fontTotalSize} bytes\n`
 
-    FileUtils.saveFile(result, `${fontName}.h`)
+    FileUtils.saveFile(result, `${fontName}.h`, "text/x-c")
 }
 
 function getSelectedFont() {
@@ -173,7 +173,7 @@ function getSelectedFont() {
 async function loadFont(selectedFont, fontSize, range = FontRanges.default) {
     if (Cache.fontName !== selectedFont || Cache.fontSize !== fontSize || Cache.range !== range || !Cache.bitmapFont) {
         const fontFace = document.fonts.values().find(f => f.family === selectedFont);
-        if (!fontFace) throw new Error(`Unknown font ${fontName}`)
+        if (!fontFace) throw new Error(`Unknown font ${selectedFont}`)
 
         await fontFace.load();
 
@@ -187,9 +187,9 @@ async function loadFont(selectedFont, fontSize, range = FontRanges.default) {
 }
 
 async function refreshPreview() {
-    const text = document.getElementById("textfield").value;
+    const text = document.getElementById("text-field").value;
     const selectedFont = getSelectedFont();
-    const fontSize = Number.parseInt(document.getElementById("sizefield").value);
+    const fontSize = Number.parseInt(document.getElementById("size-field").value);
     const range = document.getElementById("range-select").value;
 
     const bitmapFont = await loadFont(selectedFont, fontSize, FontRanges[range] || FontRanges.default);
@@ -214,8 +214,8 @@ for (const key of Object.keys(FontRanges)) {
 }
 
 
-document.getElementById("textfield").addEventListener("keyup", () => refreshPreview());
-document.getElementById("sizefield").addEventListener("change", () => refreshPreview());
+document.getElementById("text-field").addEventListener("keyup", () => refreshPreview());
+document.getElementById("size-field").addEventListener("change", () => refreshPreview());
 document.getElementById("font-select").addEventListener("change", () => refreshPreview());
 document.getElementById("range-select").addEventListener("change", () => refreshPreview());
 
@@ -223,4 +223,4 @@ document.getElementById("upload-font").addEventListener("click", () => uploadFon
 document.getElementById("get-font").addEventListener("click", () => downloadFont());
 document.getElementById("get-all-fonts").addEventListener("click", () => downloadAllFonts());
 
-refreshPreview();
+refreshPreview().catch((e) => console.error(e));
