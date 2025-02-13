@@ -6,6 +6,7 @@
 
 import {PackedImageWriter} from "./misc/image_writer.js";
 import * as GlyphUtils from "./utils/glyph.js";
+import * as FontUtils from "./utils/font";
 
 class Font {
     name;
@@ -17,9 +18,25 @@ class Font {
     advanceY;
 }
 
+
+export class Glyph {
+    char = null;
+    charCode = null;
+    offset = 0;
+    width = 0;
+    height = 0;
+    advanceX = 0;
+    offsetX = 0;
+    offsetY = 0;
+}
+
+
 /**
  * Converts given font with specified parameters to bitmap and stores glyphs & buffer data.
  *
+ * @typedef {import("opentype.js").Font} OpentypeFont
+ *
+ * @param {OpentypeFont} fontFace - Name of the font.
  * @param {string} fontName - Name of the font.
  * @param {Object} fontSize - Font size in px
  * @param {string} charSet - String of characters in this font range.
@@ -28,7 +45,7 @@ class Font {
  * @returns {Font} - A Font object representing all glyphs with their bitmapped data.
  */
 export function convertFontToBitmap(
-    fontName, fontSize, {charSet, bpp = 1, dpi = 222}
+    fontFace, fontName, fontSize, {charSet, bpp = 1, dpi = 222}
 ) {
     bpp = Math.max(1, Math.min(8, bpp - bpp % 2));
 
@@ -50,21 +67,31 @@ export function convertFontToBitmap(
 
     for (let charCode = codeFrom; charCode <= codeTo; charCode++) {
         if (!codesSet.has(charCode)) {
-            glyphs.push(new GlyphUtils.Glyph());
+            glyphs.push(new Glyph());
             continue;
         }
 
         const char = String.fromCharCode(charCode);
-        const metrics = context.measureText(char);
+        const fontGlyph = fontFace.charToGlyph(char);
 
-        const glyph = GlyphUtils.createGlyph(char, charCode, metrics, buffer.length);
+        const metrics = FontUtils.getMetrics(fontFace, char, correctedFontSize);
+
+        const glyph = new Glyph();
+        glyph.char = char;
+        glyph.charCode = charCode;
+        glyph.offset = buffer.length;
+        glyph.width = metrics.width;
+        glyph.height = metrics.height;
+        glyph.advanceX = metrics.advanceWidth;
+        glyph.offsetX = metrics.xMin;
+        glyph.offsetY = -metrics.yMax;
         glyphs.push(glyph);
 
-        configureCanvas(canvas, context, fontName, correctedFontSize, glyph);
-        const {width: canvasWidth, height: canvasHeight} = canvas;
+        const canvasWidth = canvas.width = glyph.width;
+        const canvasHeight = canvas.height = glyph.height;
 
         context.clearRect(0, 0, canvasWidth, canvasHeight);
-        context.fillText(char, 0, 0);
+        fontGlyph.draw(context, 0, metrics.yMax, correctedFontSize);
 
         const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
 
@@ -136,8 +163,4 @@ function createCanvas() {
 function configureCanvas(canvas, context, fontName, fontSize, glyph) {
     canvas.width = glyph.width;
     canvas.height = glyph.height;
-
-    context.font = `${fontSize}px ${fontName}`;
-    context.textBaseline = "top";
-    context.textRendering = "geometricPrecision";
 }

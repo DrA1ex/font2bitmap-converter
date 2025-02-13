@@ -7,14 +7,16 @@
 
 import * as CommonUtils from "./utils/common";
 
-export const BuiltinFonts = [
-    "Roboto",
-    "Roboto Bold",
-    "Roboto Thin",
-    "JetBrainsMono",
-    "JetBrainsMono Bold",
-    "JetBrainsMono Thin",
-]
+export const BuiltinFonts = {
+    "Roboto": "./fonts/Roboto-Regular.ttf",
+    "Roboto Bold": "./fonts/Roboto-Bold.ttf",
+    "Roboto Thin": "./fonts/Roboto-Thin.ttf",
+    "JetBrainsMono": "./fonts/JetBrainsMono-Regular.ttf",
+    "JetBrainsMono Bold": "./fonts/JetBrainsMono-Bold.ttf",
+    "JetBrainsMono Thin": "./fonts/JetBrainsMono-Thin.ttf",
+}
+
+export const UserFonts = {};
 
 export const FontRanges = {
     "default": CommonUtils.generateString(' ', '~'),

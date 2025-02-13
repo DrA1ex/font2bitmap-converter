@@ -10,9 +10,7 @@ import {TextDrawer} from "./drawer.js";
 import * as FileUtils from "./utils/file.js"
 import * as FontUtils from "./utils/font";
 
-import {BuiltinFonts, FontRanges, ExportSizes, ExportFormats} from "./defs.js"
-
-const UserFonts = [];
+import {BuiltinFonts, UserFonts, FontRanges, ExportSizes, ExportFormats} from "./defs.js"
 
 const Canvas = document.getElementById("preview");
 
@@ -35,10 +33,11 @@ async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
     if (!file) return;
 
-    const font = await FontUtils.importFont(file);
-    UserFonts.push(font.family);
+    const result = await FontUtils.importFont(file);
+    if (!result) return;
 
-    addFont(font.family);
+    const {fontName} = result;
+    addFont(fontName);
 }
 
 function addFont(fontName) {
@@ -59,7 +58,7 @@ async function downloadFont() {
 
 async function downloadAllFonts() {
     const options = getFontOptions();
-    for (const fontName of BuiltinFonts.concat(UserFonts)) {
+    for (const fontName of Object.keys(BuiltinFonts) + Object.keys(UserFonts)) {
         for (const size of ExportSizes) {
             await Export.exportFont(fontName, size, options);
         }
@@ -121,7 +120,7 @@ function initSelect(id, keys) {
     }
 }
 
-initSelect("font-select", BuiltinFonts);
+initSelect("font-select", Object.keys(BuiltinFonts));
 initSelect("range-select", Object.keys(FontRanges));
 initSelect("format-select", Object.keys(ExportFormats));
 

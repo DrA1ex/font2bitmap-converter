@@ -7,37 +7,6 @@
 
 import {PackedImageWriter} from "../misc/image_writer";
 
-export class Glyph {
-    char = null;
-    charCode = null;
-    offset = 0;
-    width = 0;
-    height = 0;
-    advanceX = 0;
-    offsetX = 0;
-    offsetY = 0;
-}
-
-
-export function createGlyph(char, charCode, metrics, bytesOffset) {
-    const width = Math.max(1, Math.ceil(metrics.width));
-    const height = Math.max(1, Math.ceil(
-        Math.abs(metrics.actualBoundingBoxAscent) +
-        Math.abs(metrics.actualBoundingBoxDescent)
-    ));
-
-    const glyph = new Glyph();
-    glyph.char = char;
-    glyph.charCode = charCode;
-    glyph.offset = bytesOffset;
-    glyph.width = width;
-    glyph.height = height;
-    glyph.advanceX = Math.ceil(metrics.width);
-    glyph.offsetX = Math.floor(metrics.actualBoundingBoxLeft);
-    glyph.offsetY = Math.floor(metrics.alphabeticBaseline);
-
-    return glyph;
-}
 
 export function trimGlyph(glyph, emptyLeft, emptyRight, emptyTop, emptyBottom) {
     glyph.height = Math.max(1, glyph.height - emptyTop - emptyBottom);

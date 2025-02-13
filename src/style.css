@@ -6,36 +6,6 @@
 * This file may be distributed under the terms of the GNU GPLv3 license
 */
 
-@font-face {
-    font-family: "JetBrainsMono";
-    src: url("./fonts/JetBrainsMono-Regular.ttf")
-}
-
-@font-face {
-    font-family: "JetBrainsMono Bold";
-    src: url("./fonts/JetBrainsMono-Bold.ttf")
-}
-
-@font-face {
-    font-family: "JetBrainsMono Thin";
-    src: url("./fonts/JetBrainsMono-Thin.ttf")
-}
-
-@font-face {
-    font-family: "Roboto";
-    src: url("./fonts/Roboto-Regular.ttf")
-}
-
-@font-face {
-    font-family: "Roboto Bold";
-    src: url("./fonts/Roboto-Bold.ttf")
-}
-
-@font-face {
-    font-family: "Roboto Thin";
-    src: url("./fonts/Roboto-Thin.ttf")
-}
-
 html {
     margin: 0 auto;
     height: 100%;
