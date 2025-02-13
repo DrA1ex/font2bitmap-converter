@@ -39,7 +39,7 @@ const CustomFormatBase = {
     commentGlyph: " // %charCode% '%char%'",
     declarationsFont: [
         "const Font %fontKey% = {",
-        `    "%fontDisplayName%",`,
+        `    "%fontDisplayName%", %bpp%,`,
         `    (uint8_t *) %fontKey%Bitmaps,`,
         `    (Glyph *) %fontKey%Glyphs,`,
         `    %codeFrom%, %codeTo%,`,
@@ -50,7 +50,7 @@ const CustomFormatBase = {
         return font.buffer.byteLength
             + 9 * font.glyphs.length // Glyphs structs total size
             + font.name.length
-            + 15; // Font struct size
+            + 16; // Font struct size
     }
 };
 

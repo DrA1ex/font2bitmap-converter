@@ -11,7 +11,10 @@ import * as FontUtils from "./utils/font.js";
 
 export async function exportFont(family, size, options) {
     const font = await FontUtils.loadFont(family, size, options);
-    const fontKey = CommonUtils.capitalize(font.name);
+    let fontKey = CommonUtils.capitalize(font.name)
+    if (options.bpp > 1) {
+        fontKey += "b" + options.bpp;
+    }
 
     const {format: exportFormat, bpp} = options;
 
@@ -77,6 +80,7 @@ function replacePlaceholders(str, font, fontKey, glyph = null) {
 
     let result = str.replaceAll("%fontKey%", fontKey)
         .replaceAll("%fontDisplayName%", font.name)
+        .replaceAll("%bpp%", font.bpp)
         .replaceAll("%codeFrom%", font.codeFrom)
         .replaceAll("%codeTo%", font.codeTo)
         .replaceAll("%advanceY%", font.advanceY);
