@@ -4,17 +4,8 @@
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
-
-class Glyph {
-    char = null;
-    charCode = null;
-    offset = 0;
-    width = 0;
-    height = 0;
-    advanceX = 0;
-    offsetX = 0;
-    offsetY = 0;
-}
+import {PackedImageWriter} from "./misc/image_writer.js";
+import * as GlyphUtils from "./utils/glyph.js";
 
 class Font {
     name;
@@ -43,22 +34,8 @@ export function convertFontToBitmap(
 
     const glyphs = [];
     const buffer = [];
-    let bytesOffset = 0;
 
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", {
-        willReadFrequently: true
-    });
-
-    // For debugging
-    canvas.style.position = "absolute";
-    canvas.style.right = "10px"
-    canvas.style.top = "10px"
-    canvas.style.border = "1px solid black";
-    canvas.style.imageRendering = "pixelated";
-    canvas.style.width = "100px";
-    canvas.style.height = "auto";
-
+    const {canvas, context} = createCanvas();
     document.body.appendChild(canvas);
 
     const correctedFontSize = Math.floor((fontSize * dpi) / 96);
@@ -73,84 +50,55 @@ export function convertFontToBitmap(
 
     for (let charCode = codeFrom; charCode <= codeTo; charCode++) {
         if (!codesSet.has(charCode)) {
-            glyphs.push(new Glyph());
+            glyphs.push(new GlyphUtils.Glyph());
             continue;
         }
 
         const char = String.fromCharCode(charCode);
-
-        // Measure character dimensions
         const metrics = context.measureText(char);
 
-        const width = Math.max(1, Math.ceil(metrics.width));
-        const height = Math.max(1, Math.ceil(Math.abs(metrics.actualBoundingBoxAscent)
-            + Math.abs(metrics.actualBoundingBoxDescent)));
+        const glyph = GlyphUtils.createGlyph(char, charCode, metrics, buffer.length);
+        glyphs.push(glyph);
 
-        const glyph = new Glyph();
-        glyph.char = char;
-        glyph.charCode = charCode;
-        glyph.offset = bytesOffset;
-        glyph.width = width;
-        glyph.height = height;
-        glyph.advanceX = Math.ceil(metrics.width);
-        glyph.offsetX = Math.floor(metrics.actualBoundingBoxLeft);
-        glyph.offsetY = Math.floor(metrics.alphabeticBaseline);
+        configureCanvas(canvas, context, fontName, correctedFontSize, glyph);
+        const {width: canvasWidth, height: canvasHeight} = canvas;
 
-        // Adjust the canvas size
-        canvas.width = width;
-        canvas.height = height;
-
-        context.font = `${correctedFontSize}px ${fontName}`;
-        context.textBaseline = "top";
-        context.textRendering = "geometricPrecision";
-
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, canvasWidth, canvasHeight);
         context.fillText(char, 0, 0);
 
-        const imageData = context.getImageData(0, 0, width, height);
+        const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
 
-        const emptyTopRows = countEmptyRows(imageData, width, height, bpp, 1);
-        const emptyBottomRows = countEmptyRows(imageData, width, height, bpp, -1);
-        const emptyLeftCols = countEmptyCols(imageData, width, height, bpp, 1);
-        const emptyRightCols = countEmptyCols(imageData, width, height, bpp, -1);
+        const {
+            emptyLeft, emptyRight,
+            emptyTop, emptyBottom
+        } = GlyphUtils.calculateEmptySpace(imageData, canvasWidth, canvasHeight, bpp);
 
-        glyph.height = Math.max(1, glyph.height - emptyTopRows - emptyBottomRows);
-        glyph.width = Math.max(1, glyph.width - emptyLeftCols - emptyRightCols);
+        GlyphUtils.trimGlyph(glyph, emptyLeft, emptyRight, emptyTop, emptyBottom);
 
-        glyph.offsetY += emptyTopRows;
-        glyph.offsetX += emptyLeftCols;
-        glyph.advanceX += emptyRightCols;
+        const startX = emptyLeft;
+        const endX = startX + glyph.width;
 
-        const state = {
-            bpp, bits: [], rowByte: 0, bitIndex: 0
-        }
+        const startY = emptyTop;
+        const endY = startY + glyph.height;
 
-        for (let y = emptyTopRows; y < height - emptyBottomRows; y++) {
-            for (let x = emptyLeftCols; x < width - emptyRightCols; x++) {
+        const writer = new PackedImageWriter(bpp);
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
                 const alpha = imageData.data[(y * imageData.width + x) * 4 + 3];
-                writePixel(alpha, state);
+                writer.write(alpha)
             }
         }
 
         // Align to 8 bits if glyph isn't complete
-        if (state.bitIndex > 0) {
-            state.bits.push(state.rowByte);
-            state.rowByte = 0;
-            state.bitIndex = 0;
-        }
+        writer.flush();
 
-        const glyphBuffer = Uint8Array.from(state.bits);
-        buffer.push(...glyphBuffer);
+        const glyphBuffer = writer.byteArray();
+        Array.prototype.push.apply(buffer, glyphBuffer);
 
         // Debug rendering
         context.fillStyle = "red";
-        context.fillRect(glyph.offsetX, 0, 1, height);
-        context.fillRect(0, -glyph.offsetY, width, 1);
-
-        glyphs.push(glyph)
-
-
-        bytesOffset += glyphBuffer.length;
+        context.fillRect(glyph.offsetX, 0, 1, canvasHeight);
+        context.fillRect(0, -glyph.offsetY, canvasWidth, 1);
     }
 
     document.body.removeChild(canvas);
@@ -167,60 +115,29 @@ export function convertFontToBitmap(
     return result;
 }
 
-function getValue(input, bpp) {
-    const k = bpp > 1 ? Math.floor(0xff / 2 ** bpp + 1) : 128;
-    return Math.floor(input / k);
+function createCanvas() {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", {
+        willReadFrequently: true
+    });
+
+    // For debugging
+    canvas.style.position = "absolute";
+    canvas.style.right = "10px"
+    canvas.style.top = "10px"
+    canvas.style.border = "1px solid black";
+    canvas.style.imageRendering = "pixelated";
+    canvas.style.width = "100px";
+    canvas.style.height = "auto";
+
+    return {canvas, context};
 }
 
-function writePixel(input, state) {
-    const value = getValue(input, state.bpp)
-    state.rowByte |= value << ((8 - state.bpp) - state.bitIndex);
+function configureCanvas(canvas, context, fontName, fontSize, glyph) {
+    canvas.width = glyph.width;
+    canvas.height = glyph.height;
 
-    // TODO: To support 'odd' bpp need to handle bitIndex >= 8 with carry additional bits
-    state.bitIndex += state.bpp;
-    if (state.bitIndex === 8) {
-        state.bits.push(state.rowByte);
-        state.rowByte = 0;
-        state.bitIndex = 0;
-    }
-}
-
-function countEmptyRows(imageData, width, height, bpp, step) {
-    let count = 0;
-    for (let y = 0; y < height; y++) {
-        let rowEmpty = true;
-
-        for (let x = step > 0 ? 0 : width - 1; x >= 0 && x < width; x += step) {
-            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
-            if (getValue(alpha, bpp) > 0) {
-                rowEmpty = false;
-                break;
-            }
-        }
-
-        if (!rowEmpty) break;
-        ++count;
-    }
-
-    return count;
-}
-
-function countEmptyCols(imageData, width, height, bpp, step) {
-    let count = 0;
-    for (let x = 0; x < width; x++) {
-        let colEmpty = true;
-
-        for (let y = step > 0 ? 0 : height - 1; y >= 0 && y < height; y += step) {
-            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
-            if (getValue(alpha, bpp) > 0) {
-                colEmpty = false;
-                break;
-            }
-        }
-
-        if (!colEmpty) break;
-        ++count;
-    }
-
-    return count;
+    context.font = `${fontSize}px ${fontName}`;
+    context.textBaseline = "top";
+    context.textRendering = "geometricPrecision";
 }

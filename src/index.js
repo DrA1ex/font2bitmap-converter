@@ -35,7 +35,7 @@ async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
     if (!file) return;
 
-    const font = FontUtils.importFont(file);
+    const font = await FontUtils.importFont(file);
     UserFonts.push(font.family);
 
     addFont(font.family);
