@@ -39,3 +39,7 @@ export function generateString(...pairs) {
 
     return result;
 }
+
+export function toHex(value, bytes = 1) {
+    return `0x${value.toString(16).padStart(bytes * 2, "0")}`;
+}

@@ -7,6 +7,8 @@
 const AlphaThreshold = 128;
 
 class Glyph {
+    char = null;
+    charCode = null;
     offset = 0;
     width = 0;
     height = 0;
@@ -64,13 +66,13 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
 
     const codesSet = new Set(codes);
 
-    for (let i = codeFrom; i <= codeTo; i++) {
-        if (!codesSet.has(i)) {
+    for (let charCode = codeFrom; charCode <= codeTo; charCode++) {
+        if (!codesSet.has(charCode)) {
             glyphs.push(new Glyph());
             continue;
         }
 
-        const char = String.fromCharCode(i);
+        const char = String.fromCharCode(charCode);
 
         // Measure character dimensions
         const metrics = context.measureText(char);
@@ -123,6 +125,8 @@ export function convertFontToBitmap(fontName, fontSize, charSet, dpi = 222) {
         buffer.push(...glyphBuffer);
 
         const glyph = new Glyph();
+        glyph.char = char;
+        glyph.charCode = charCode;
         glyph.offset = bufferOffset;
         glyph.width = width;
         glyph.height = height;
