@@ -31,8 +31,10 @@ export async function loadFont(family, size, options = {}) {
         const font = defs.UserFonts[family] || defs.BuiltinFonts[family];
         if (!font) throw new Error("Unknown font: " + family);
 
-        const fontFace = typeof font === "string"
-                         ? (await opentype.load(font)) : font;
+        let fontFace = font;
+        if (typeof font === "string") {
+            defs.BuiltinFonts[family] = fontFace = await opentype.load(font);
+        }
 
         FontCache.fontName = family;
         FontCache.fontSize = size;

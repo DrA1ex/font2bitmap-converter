@@ -88,6 +88,49 @@ h3 {
     image-rendering: pixelated;
 }
 
+
+.block[busy="true"] {
+    position: relative;
+}
+
+.block[busy="true"]::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fefefe;
+    border-radius: 1rem;
+    z-index: 1;
+}
+
+
+.block[busy="true"]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #fff;
+    border-top: 4px solid #FFC107;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+}
+
+/* Keyframes for the spinning animation */
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
 #stats {
     min-height: 1.2rem;
     font-weight: 300;

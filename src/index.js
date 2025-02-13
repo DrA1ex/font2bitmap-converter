@@ -58,7 +58,7 @@ async function downloadFont() {
 
 async function downloadAllFonts() {
     const options = getFontOptions();
-    for (const fontName of Object.keys(BuiltinFonts) + Object.keys(UserFonts)) {
+    for (const fontName of Object.keys(BuiltinFonts).concat(Object.keys(UserFonts))) {
         for (const size of ExportSizes) {
             await Export.exportFont(fontName, size, options);
         }
@@ -95,19 +95,26 @@ async function refreshPreview() {
     const fontSize = Number.parseInt(document.getElementById("size-field").value);
     const options = getFontOptions();
 
-    const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, options);
-    Drawer.setFont(bitmapFont);
+    const block = document.getElementById("preview").parentNode;
+    block.setAttribute("busy", "true");
 
-    Context.clearRect(0, 0, Canvas.width, Canvas.height);
+    try {
+        const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, options);
+        Drawer.setFont(bitmapFont);
 
-    const boundary = Drawer.calcTextBoundaries(text);
-    Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
-    Drawer.print(text);
+        Context.clearRect(0, 0, Canvas.width, Canvas.height);
 
-    document.getElementById("stats").textContent =
-        `${bitmapFont.name}, Size: ${options.format.size(bitmapFont)}`
-        + `, Glyphs: ${options.charSet.length}`
-        + `, ${options.bpp} bpp, ${options.dpi} dpi`;
+        const boundary = Drawer.calcTextBoundaries(text);
+        Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
+        Drawer.print(text);
+
+        document.getElementById("stats").textContent =
+            `${bitmapFont.name}, Size: ${options.format.size(bitmapFont)}`
+            + `, Glyphs: ${options.charSet.length}`
+            + `, ${options.bpp} bpp, ${options.dpi} dpi`;
+    } finally {
+        block.setAttribute("busy", "false");
+    }
 }
 
 function initSelect(id, keys) {
