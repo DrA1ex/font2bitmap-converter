@@ -9,14 +9,14 @@ import * as Bitmap from "../bitmap";
 const FontCache = {
     fontName: null,
     fontSize: null,
-    range: null,
+    options: {},
     bitmapFont: null,
 }
 
-export async function loadFont(family, size, range) {
+export async function loadFont(family, size, options = {}) {
     if (FontCache.fontName !== family
         || FontCache.fontSize !== size
-        || FontCache.range !== range
+        || JSON.stringify(FontCache.options) !== JSON.stringify(options)
         || !FontCache.bitmapFont
     ) {
         const fontFace = document.fonts.values().find(f => f.family === family);
@@ -26,8 +26,8 @@ export async function loadFont(family, size, range) {
 
         FontCache.fontName = family;
         FontCache.fontSize = size;
-        FontCache.range = range;
-        FontCache.bitmapFont = Bitmap.convertFontToBitmap(family, size, range);
+        FontCache.options = options;
+        FontCache.bitmapFont = Bitmap.convertFontToBitmap(family, size, options);
     }
 
     return FontCache.bitmapFont

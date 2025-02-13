@@ -5,6 +5,9 @@
 // This file may be distributed under the terms of the GNU GPLv3 license
 
 
+import {getColorComponents} from "./utils/common";
+import * as CommonUtils from "./utils/common";
+
 export class TextDrawer {
     #ctx = null;
     #color = 0xffffffff;
@@ -16,12 +19,17 @@ export class TextDrawer {
     #scaleX = 1;
     #scaleY = 1;
 
+    #bpp = null;
+    #glyphMask = null;
+
     constructor(ctx) {
         this.#ctx = ctx;
     }
 
     setFont(font) {
         this.#font = font;
+        this.#glyphMask = (1 << font.bpp) - 1;
+        this.#bpp = font.bpp || 1;
     }
 
     font() {
@@ -142,14 +150,16 @@ export class TextDrawer {
 
         for (let gy = 0; gy < glyph.height; gy++) {
             for (let gx = 0; gx < glyph.width; gx++) {
-                const index = gy * glyph.width + gx;
+                const index = (gy * glyph.width + gx) * this.#bpp;
                 const byteOffset = glyph.offset + Math.floor(index / 8);
-                const bitOffset = 7 - (index % 8);
+                const bitOffset = (8 - this.#bpp) - (index % 8);
 
-                if ((font.buffer[byteOffset] >> bitOffset) & 1) {
+                const pixel = (font.buffer[byteOffset] >> bitOffset) & this.#glyphMask;
+                if (pixel) {
                     const x = offsetX + gx * scaleX;
                     const y = offsetY + gy * scaleY;
-                    this._fillRect(x, y, scaleX, scaleY, this.#color);
+                    const color = this._mix(0xff00000000, this.#color, pixel / this.#glyphMask)
+                    this._fillRect(x, y, scaleX, scaleY, color);
                 }
             }
         }
@@ -166,10 +176,25 @@ export class TextDrawer {
     }
 
     _toRGBA(color) {
-        const a = (color >>> 24) & 0xff;
-        const r = (color >> 16) & 0xff;
-        const g = (color >> 8) & 0xff;
-        const b = color & 0xff;
+        const [a, r, g, b] = CommonUtils.getColorComponents(color)
         return `rgba(${r},${g},${b},${a / 255})`;
+    }
+
+    _mix(colorA, colorB, factor) {
+        if (factor === 0) return colorA;
+        if (factor === 1) return colorB;
+
+        const components1 = CommonUtils.getColorComponents(colorA);
+        const components2 = CommonUtils.getColorComponents(colorB);
+
+        const result = new Array(components1.length);
+        for (let i = 0; i < components1.length; i++) {
+            const a = components1[i];
+            const b = components2[i];
+
+            result[i] = a + (b - a) * factor;
+        }
+
+        return CommonUtils.toColor(result);
     }
 }

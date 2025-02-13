@@ -50,21 +50,18 @@ function addFont(fontName) {
 }
 
 async function downloadFont() {
-    const fontNmae = getSelectedFont();
+    const fontName = getSelectedFont();
     const size = Number.parseInt(document.getElementById('size-field').value);
-    const range = getFontRange();
-    const format = getExportFormat();
+    const options = getFontOptions();
 
-    await Export.exportFont(fontNmae, size, range, format);
+    await Export.exportFont(fontName, size, options);
 }
 
 async function downloadAllFonts() {
-    const range = getFontRange();
-    const format = getExportFormat();
-
+    const options = getFontOptions();
     for (const fontName of BuiltinFonts.concat(UserFonts)) {
         for (const size of ExportSizes) {
-            await Export.exportFont(fontName, size, range, format);
+            await Export.exportFont(fontName, size, options);
         }
     }
 }
@@ -83,12 +80,23 @@ function getExportFormat() {
     return ExportFormats[format] || ExportFormats.Adafruit;
 }
 
+function getFontOptions() {
+    const format = getExportFormat();
+    return {
+        format,
+        charSet: getFontRange(),
+        bpp: format.bpp,
+        dpi: format.dpi,
+    }
+}
+
 async function refreshPreview() {
     const text = document.getElementById("text-field").value;
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseInt(document.getElementById("size-field").value);
+    const options = getFontOptions();
 
-    const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, getFontRange());
+    const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, options);
     Drawer.setFont(bitmapFont);
 
     Context.clearRect(0, 0, Canvas.width, Canvas.height);
@@ -96,6 +104,11 @@ async function refreshPreview() {
     const boundary = Drawer.calcTextBoundaries(text);
     Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
     Drawer.print(text);
+
+    document.getElementById("stats").textContent =
+        `${bitmapFont.name}, Size: ${options.format.size(bitmapFont)}`
+        + `, Glyphs: ${options.charSet.length}`
+        + `, ${options.bpp} bpp, ${options.dpi} dpi`;
 }
 
 function initSelect(id, keys) {
@@ -116,6 +129,7 @@ document.getElementById("text-field").addEventListener("keyup", () => refreshPre
 document.getElementById("size-field").addEventListener("change", () => refreshPreview());
 document.getElementById("font-select").addEventListener("change", () => refreshPreview());
 document.getElementById("range-select").addEventListener("change", () => refreshPreview());
+document.getElementById("format-select").addEventListener("change", () => refreshPreview());
 
 document.getElementById("upload-font").addEventListener("click", () => uploadFont());
 document.getElementById("get-font").addEventListener("click", () => downloadFont());

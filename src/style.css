@@ -56,7 +56,7 @@ body {
 .container {
     display: grid;
     grid-template-columns: auto 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 1fr auto;
     grid-gap: 1rem;
     padding: 0 1rem;
     width: 100%;
@@ -99,7 +99,7 @@ h3 {
 
 .block.parameters {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 3 / span 2;
 }
 
 .block.preview {
@@ -116,6 +116,12 @@ h3 {
     align-items: stretch;
 
     image-rendering: pixelated;
+}
+
+#stats {
+    min-height: 1.2rem;
+    font-weight: 300;
+    text-align: center;
 }
 
 .font-label {

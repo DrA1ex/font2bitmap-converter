@@ -24,10 +24,42 @@ export const FontRanges = {
 
 export const ExportSizes = [12, 16, 20, 28]
 
+const CustomFormatBase = {
+    dpi: 222,
+
+    align: "    ",
+    maxRowSize: 80,
+
+    header: `#pragma once\n\n#include "./types.h"\n`,
+    declarationBitmaps: "const uint8_t %fontKey%Bitmaps[] = {",
+    declarationGlyphs: "const Glyph %fontKey%Glyphs[] = {",
+    entryGlyph: "{ %offset%, %width%, %height%, %advanceX%, %offsetX%, %offsetY% },",
+    commentGlyph: " // %charCode% '%char%'",
+    declarationsFont: [
+        "const Font %fontKey% = {",
+        `    "%fontDisplayName%",`,
+        `    (uint8_t *) %fontKey%Bitmaps,`,
+        `    (Glyph *) %fontKey%Glyphs,`,
+        `    %codeFrom%, %codeTo%,`,
+        `    %advanceY%,`,
+        "};"
+    ],
+    size(font) {
+        return font.buffer.byteLength
+            + 9 * font.glyphs.length // Glyphs structs total size
+            + font.name.length
+            + 15; // Font struct size
+    }
+};
+
 export const ExportFormats = {
     Adafruit: {
+        bpp: 1,
+        dpi: 141,
+
         align: "    ",
         maxRowSize: 80,
+
         header: "#pragma once\n#include <Adafruit_GFX.h>\n",
         declarationBitmaps: "const uint8_t %fontKey%Bitmaps[] PROGMEM = {",
         declarationGlyphs: "const GFXglyph %fontKey%Glyphs[] PROGMEM = {",
@@ -48,28 +80,20 @@ export const ExportFormats = {
         }
     },
 
-    Custom: {
-        align: "    ",
-        maxRowSize: 80,
-        header: `#pragma once\n\n#include "./types.h"\n`,
-        declarationBitmaps: "const uint8_t %fontKey%Bitmaps[] = {",
-        declarationGlyphs: "const Glyph %fontKey%Glyphs[] = {",
-        entryGlyph: "{ %offset%, %width%, %height%, %advanceX%, %offsetX%, %offsetY% },",
-        commentGlyph: "// '%char%'",
-        declarationsFont: [
-            "const Font %fontKey% = {",
-            `    "%fontDisplayName%",`,
-            `    (uint8_t *) %fontKey%Bitmaps,`,
-            `    (Glyph *) %fontKey%Glyphs,`,
-            `    %codeFrom%, %codeTo%,`,
-            `    %advanceY%,`,
-            "};"
-        ],
-        size(font) {
-            return font.buffer.byteLength
-                + 9 * font.glyphs.length // Glyphs structs total size
-                + font.name.length
-                + 14; // Font struct size
-        }
+    "Custom 1bpp": {
+        bpp: 1,
+        ...CustomFormatBase
+    },
+    "Custom 2bpp": {
+        bpp: 2,
+        ...CustomFormatBase
+    },
+    "Custom 4bpp": {
+        bpp: 4,
+        ...CustomFormatBase
+    },
+    "Custom 8bpp": {
+        bpp: 8,
+        ...CustomFormatBase
     }
 }

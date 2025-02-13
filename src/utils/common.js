@@ -41,5 +41,31 @@ export function generateString(...pairs) {
 }
 
 export function toHex(value, bytes = 1) {
-    return `0x${value.toString(16).padStart(bytes * 2, "0")}`;
+    let count = bytes * 2;
+
+    const str = value.toString(16);
+    if (str.length > bytes) {
+        count = str.length + str.length % 2;
+    }
+
+    return `0x${str.padStart(count, "0")}`;
+}
+
+export function getColorComponents(color) {
+    const a = (color >>> 24) & 0xff;
+    const r = (color >> 16) & 0xff;
+    const g = (color >> 8) & 0xff;
+    const b = color & 0xff;
+
+    return [a, r, g, b];
+}
+
+export function toColor(colorComponents) {
+    let result = 0;
+    const bitOffset = (colorComponents.length - 1) * 8;
+    for (let i = 0; i < colorComponents.length; i++) {
+        result |= (colorComponents[i] & 0xff) << (bitOffset - i * 8);
+    }
+
+    return result;
 }

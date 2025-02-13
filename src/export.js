@@ -9,9 +9,11 @@ import * as CommonUtils from "./utils/common.js";
 import * as FileUtils from "./utils/file.js";
 import * as FontUtils from "./utils/font.js";
 
-export async function exportFont(family, size, range, exportFormat) {
-    const font = await FontUtils.loadFont(family, size, range)
+export async function exportFont(family, size, options) {
+    const font = await FontUtils.loadFont(family, size, options);
     const fontKey = CommonUtils.capitalize(font.name);
+
+    const {format: exportFormat, bpp} = options;
 
     const placeholders = (str, glyph = null) => replacePlaceholders(str, font, fontKey, glyph)
 
@@ -23,7 +25,7 @@ export async function exportFont(family, size, range, exportFormat) {
 
     let rowSize = 0;
     for (let i = 0; i < font.buffer.byteLength; ++i) {
-        const s = `${CommonUtils.toHex(font.buffer[i])}, `;
+        const s = `${CommonUtils.toHex(font.buffer[i], bpp)}, `;
         if (rowSize + s.length >= exportFormat.maxRowSize) {
             result += "\n";
             rowSize = 0;
