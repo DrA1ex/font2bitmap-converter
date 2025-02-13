@@ -86,6 +86,16 @@ export function convertFontToBitmap(
         const height = Math.max(1, Math.ceil(Math.abs(metrics.actualBoundingBoxAscent)
             + Math.abs(metrics.actualBoundingBoxDescent)));
 
+        const glyph = new Glyph();
+        glyph.char = char;
+        glyph.charCode = charCode;
+        glyph.offset = bytesOffset;
+        glyph.width = width;
+        glyph.height = height;
+        glyph.advanceX = Math.ceil(metrics.width);
+        glyph.offsetX = Math.floor(metrics.actualBoundingBoxLeft);
+        glyph.offsetY = Math.floor(metrics.alphabeticBaseline);
+
         // Adjust the canvas size
         canvas.width = width;
         canvas.height = height;
@@ -99,17 +109,25 @@ export function convertFontToBitmap(
 
         const imageData = context.getImageData(0, 0, width, height);
 
+        const emptyTopRows = countEmptyRows(imageData, width, height, bpp, 1);
+        const emptyBottomRows = countEmptyRows(imageData, width, height, bpp, -1);
+        const emptyLeftCols = countEmptyCols(imageData, width, height, bpp, 1);
+        const emptyRightCols = countEmptyCols(imageData, width, height, bpp, -1);
+
+        glyph.height = Math.max(1, glyph.height - emptyTopRows - emptyBottomRows);
+        glyph.width = Math.max(1, glyph.width - emptyLeftCols - emptyRightCols);
+
+        glyph.offsetY += emptyTopRows;
+        glyph.offsetX += emptyLeftCols;
+        glyph.advanceX += emptyRightCols;
+
         const state = {
-            bpp,
-            bits: [],
-            rowByte: 0,
-            bitIndex: 0
+            bpp, bits: [], rowByte: 0, bitIndex: 0
         }
 
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
+        for (let y = emptyTopRows; y < height - emptyBottomRows; y++) {
+            for (let x = emptyLeftCols; x < width - emptyRightCols; x++) {
                 const alpha = imageData.data[(y * imageData.width + x) * 4 + 3];
-
                 writePixel(alpha, state);
             }
         }
@@ -123,16 +141,6 @@ export function convertFontToBitmap(
 
         const glyphBuffer = Uint8Array.from(state.bits);
         buffer.push(...glyphBuffer);
-
-        const glyph = new Glyph();
-        glyph.char = char;
-        glyph.charCode = charCode;
-        glyph.offset = bytesOffset;
-        glyph.width = width;
-        glyph.height = height;
-        glyph.advanceX = Math.ceil(metrics.width);
-        glyph.offsetX = Math.floor(metrics.actualBoundingBoxLeft);
-        glyph.offsetY = Math.floor(metrics.alphabeticBaseline);
 
         // Debug rendering
         context.fillStyle = "red";
@@ -159,10 +167,13 @@ export function convertFontToBitmap(
     return result;
 }
 
-function writePixel(input, state) {
-    const k = state.bpp > 1 ? Math.floor(0xff / 2 ** state.bpp + 1) : 128;
-    const value = Math.floor(input / k);
+function getValue(input, bpp) {
+    const k = bpp > 1 ? Math.floor(0xff / 2 ** bpp + 1) : 128;
+    return Math.floor(input / k);
+}
 
+function writePixel(input, state) {
+    const value = getValue(input, state.bpp)
     state.rowByte |= value << ((8 - state.bpp) - state.bitIndex);
 
     // TODO: To support 'odd' bpp need to handle bitIndex >= 8 with carry additional bits
@@ -172,4 +183,44 @@ function writePixel(input, state) {
         state.rowByte = 0;
         state.bitIndex = 0;
     }
+}
+
+function countEmptyRows(imageData, width, height, bpp, step) {
+    let count = 0;
+    for (let y = 0; y < height; y++) {
+        let rowEmpty = true;
+
+        for (let x = step > 0 ? 0 : width - 1; x >= 0 && x < width; x += step) {
+            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
+            if (getValue(alpha, bpp) > 0) {
+                rowEmpty = false;
+                break;
+            }
+        }
+
+        if (!rowEmpty) break;
+        ++count;
+    }
+
+    return count;
+}
+
+function countEmptyCols(imageData, width, height, bpp, step) {
+    let count = 0;
+    for (let x = 0; x < width; x++) {
+        let colEmpty = true;
+
+        for (let y = step > 0 ? 0 : height - 1; y >= 0 && y < height; y += step) {
+            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
+            if (getValue(alpha, bpp) > 0) {
+                colEmpty = false;
+                break;
+            }
+        }
+
+        if (!colEmpty) break;
+        ++count;
+    }
+
+    return count;
 }
