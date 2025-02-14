@@ -60,7 +60,7 @@ The following query parameters can be used to preconfigure the converter. These 
 To use these query parameters, append them to the converter's URL. For example:
 
 ```
-https://dra1ex.github.io/font2bitmap-converter/?text=Hello&fontSize=16&fontFamily=Arial&exportFormat=png&exportRange=A-Z;a-z&exportSizes=16,32,64
+https://dra1ex.github.io/font2bitmap-converter/?text=Hello&fontSize=16&fontFamily=Roboto%20Thin&exportFormat=Custom%204bpp&exportRange=A-Z;a-z&exportSizes=16,32,64
 ```
 
 ### Custom range format
