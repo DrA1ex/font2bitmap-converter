@@ -42,6 +42,52 @@ The associated font type definitions can be found here:
 
 The exported files are also compatible with the [Adafruit GFX graphics library](https://learn.adafruit.com/adafruit-gfx-graphics-library/overview), a common choice for drawing fonts on small screens like OLEDs or TFT displays with Arduino or similar platforms.
 
+
+## Query Parameters
+
+The following query parameters can be used to preconfigure the converter. These parameters can be appended to the URL query string to provide default values for settings.
+
+| Parameter         | Type              | Default Value   | Description                                                                 |
+|-------------------|-------------------|-----------------|-----------------------------------------------------------------------------|
+| `text`           | `string`          | `""` (empty)    | Provides the default preview text to render                  |
+| `fontSize`       | `integer`         | `""` (empty)    | Sets the default font size |
+| `fontFamily`     | `string`          | `""` (empty)    | Specifies the default font name                |
+| `exportFormat`   | `string`          | `""` (empty)    | Defines the default export format (e.g., `Adafruint`, `Custom 2bpp`, etc.)              |
+| `exportRange`    | `string`          | `""` (empty)    | Specifies the range of characters (e.g., `default`, or `0-9,a-z`) to be exported. |
+| `exportSizes`    | `array[integer]`  | `[]` (empty)    | Comma-separated list of export sizes (e.g., `16,32,64`) for `Export All Fonts` action. |
+
+#### Example
+To use these query parameters, append them to the converter's URL. For example:
+
+```
+https://dra1ex.github.io/font2bitmap-converter/?text=Hello&fontSize=16&fontFamily=Arial&exportFormat=png&exportRange=33-126&exportSizes=16,32,64
+```
+
+### Custom range format
+
+The `exportRange` parameter allows you to specify a range of font glyphs for export. Here's how it works:
+
+#### Supported Formats for Ranges
+1. **Symbol Range**: Specify a range between two characters.  
+   Example: `a-z` (includes all characters from 'a' to 'z')
+
+2. **Individual Symbols**: List specific characters.  
+   Example: `abcABC .,`
+
+3. **Code Range**: Specify a range of Unicode code points in hexadecimal.  
+   Example: `0xa0-0xb1` (includes all codes between `0xa0` and `0xb1`).
+
+4. **Individual Code Points**: List specific Unicode code points in hexadecimal.  
+   Example: `0xff,0xaab0,0xabf`.
+
+#### Separator for Multiple Ranges
+Use a semicolon (`;`) to separate multiple ranges.  
+Example: `a-z;0xa0-0xb1;abc`.
+
+#### Escaping Special Symbols
+To include special characters literally, use the backslash (`\`) escape.  
+Example: `a\-z` is interpreted as the symbols: `a`, `-`, `z`.
+
 ## Contribution
 
 Contributuins welcomed! Feel free to fork the repository, make changes, and submit pull requests.
