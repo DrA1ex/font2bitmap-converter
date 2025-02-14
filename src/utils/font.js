@@ -48,13 +48,15 @@ export async function loadFont(family, size, options = {}) {
 
 export async function importFont(file) {
     const buffer = await file.arrayBuffer();
-    const fontName = file.name.split(".ttf").join("");
 
     try {
         const font = opentype.parse(buffer, null);
-        defs.UserFonts[fontName] = font;
+        const fontName = font.names.fullName.en || file.name.split(".ttf").join("");
 
-        return {fontName, font};
+        if (defs.UserFonts[fontName] === undefined) {
+            defs.UserFonts[fontName] = font;
+            return {fontName, font};
+        }
     } catch (e) {
         console.error(e);
         alert("Unable to load font!");
@@ -65,7 +67,16 @@ export async function importFont(file) {
 
 export function getMetrics(fontFace, char, fontSize) {
     const fontGlyph = fontFace.charToGlyph(char);
-    const fontScale = fontSize / fontFace.glyphs.get(0).path.unitsPerEm;
+    if (!fontGlyph || fontGlyph.unicode === undefined) return null;
+
+    const unitsPerEm = fontGlyph.path.unitsPerEm
+        || fontFace.charToGlyph('a')?.path.unitsPerEm
+        || fontFace.charToGlyph('0')?.path.unitsPerEm
+        || fontFace.glyphs.get(0)?.path.unitsPerEm;
+
+    if (!unitsPerEm) return null;
+
+    const fontScale = fontSize / unitsPerEm;
     const metrics = fontGlyph.getMetrics();
 
     const result = {

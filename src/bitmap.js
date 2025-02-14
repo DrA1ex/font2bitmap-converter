@@ -75,6 +75,11 @@ export function convertFontToBitmap(
         const fontGlyph = fontFace.charToGlyph(char);
 
         const metrics = FontUtils.getMetrics(fontFace, char, correctedFontSize);
+        if (!metrics) {
+            console.warn(`Symbol '${char}' not supported by font ${fontName}`);
+            glyphs.push(new Glyph());
+            continue;
+        }
 
         const glyph = new Glyph();
         glyph.char = char;
@@ -156,6 +161,7 @@ function createCanvas() {
     canvas.style.imageRendering = "pixelated";
     canvas.style.width = "100px";
     canvas.style.height = "auto";
+    canvas.style.zIndex = "999";
 
     return {canvas, context};
 }

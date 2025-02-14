@@ -67,7 +67,10 @@ function addFont(fontName) {
     option.setAttribute("value", fontName)
     option.textContent = fontName;
 
-    document.getElementById("font-select").appendChild(option);
+    const select = document.getElementById("font-select");
+    select.appendChild(option);
+    select.value = fontName;
+    select.dispatchEvent(new Event("change"));
 }
 
 async function downloadFont() {
