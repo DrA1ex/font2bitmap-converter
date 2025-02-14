@@ -10,7 +10,7 @@ import {TextDrawer} from "./drawer.js";
 import * as FileUtils from "./utils/file.js"
 import * as FontUtils from "./utils/font";
 
-import {BuiltinFonts, UserFonts, FontRanges, ExportSizes, ExportFormats, Scales} from "./defs.js"
+import {BuiltinFonts, UserFonts, FontRanges, ExportFormats, Scales} from "./defs.js"
 
 const Canvas = document.getElementById("preview");
 
@@ -29,6 +29,18 @@ Drawer.setColor(0xff000000);
 Drawer.setBackgroundColor(0);
 
 let DrawMetrics = false;
+
+
+const queryParams = new URLSearchParams(window.location.search);
+
+const DefaultText = queryParams.get("text");
+const DefaultFontSize = Number.parseInt(queryParams.get("fontSize") || 0);
+const DefaultFontFamily = queryParams.get("fontFamily");
+const DefaultExportFormat = queryParams.get("exportFormat");
+const DefaultExportRange = queryParams.get("exportRange");
+const ExportSizes = (queryParams.get("exportSizes") || "").split(",")
+    .map(v => Number.parseInt(v))
+    .filter(v => !Number.isNaN(v));
 
 async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
@@ -59,8 +71,11 @@ async function downloadFont() {
 
 async function downloadAllFonts() {
     const options = getFontOptions();
+    const exportSizes = ExportSizes.length > 0 ? ExportSizes :
+        [Number.parseInt(document.getElementById('size-field').value)];
+
     for (const fontName of Object.keys(BuiltinFonts).concat(Object.keys(UserFonts))) {
-        for (const size of ExportSizes) {
+        for (const size of exportSizes) {
             await Export.exportFont(fontName, size, options);
         }
     }
@@ -152,7 +167,7 @@ async function refreshPreview() {
     }
 }
 
-function initSelect(id, keys) {
+function initSelect(id, keys, def = null) {
     const el = document.getElementById(id);
     for (const key of keys) {
         const option = document.createElement("option");
@@ -160,11 +175,16 @@ function initSelect(id, keys) {
         option.textContent = key;
         el.appendChild(option);
     }
+
+    el.value = def;
 }
 
-initSelect("font-select", Object.keys(BuiltinFonts));
-initSelect("range-select", Object.keys(FontRanges));
-initSelect("format-select", Object.keys(ExportFormats));
+initSelect("font-select", Object.keys(BuiltinFonts), DefaultFontFamily);
+initSelect("range-select", Object.keys(FontRanges), DefaultExportRange);
+initSelect("format-select", Object.keys(ExportFormats), DefaultExportFormat);
+
+if (DefaultFontSize) document.getElementById("size-field").value = DefaultFontSize;
+if (DefaultText) document.getElementById("text-field").value = DefaultText;
 
 document.getElementById("text-field").addEventListener("keyup", () => refreshPreview());
 document.getElementById("size-field").addEventListener("change", () => refreshPreview());
