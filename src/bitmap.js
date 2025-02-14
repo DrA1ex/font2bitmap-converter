@@ -8,6 +8,11 @@ import {PackedImageWriter} from "./misc/image_writer.js";
 import * as GlyphUtils from "./utils/glyph.js";
 import * as FontUtils from "./utils/font";
 
+// opentype requires global exports object when enabling hinting.
+// However, there is no exports in ES6 modules
+// So, create empty object by hand
+window.exports = {};
+
 class Font {
     name;
     bpp;
@@ -96,7 +101,9 @@ export function convertFontToBitmap(
         const canvasHeight = canvas.height = glyph.height;
 
         context.clearRect(0, 0, canvasWidth, canvasHeight);
-        fontGlyph.draw(context, 0, metrics.yMax, correctedFontSize);
+        fontGlyph.getPath(
+            0, metrics.yMax, correctedFontSize, {hinting: true}, fontFace
+        ).draw(context);
 
         const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
 
@@ -163,10 +170,8 @@ function createCanvas() {
     canvas.style.height = "auto";
     canvas.style.zIndex = "999";
 
-    return {canvas, context};
-}
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
 
-function configureCanvas(canvas, context, fontName, fontSize, glyph) {
-    canvas.width = glyph.width;
-    canvas.height = glyph.height;
+    return {canvas, context};
 }
