@@ -5,10 +5,10 @@
 // This file may be distributed under the terms of the GNU GPLv3 license
 
 
-import {getColorComponents} from "./utils/common";
 import * as CommonUtils from "./utils/common";
 
 export class TextDrawer {
+    /** @type {CanvasRenderingContext2D} **/
     #ctx = null;
     #color = 0xffffffff;
     #backgroundColor = 0x00000000;
@@ -32,6 +32,7 @@ export class TextDrawer {
         this.#bpp = font.bpp || 1;
     }
 
+    /** @returns {import("./bitmap").Font} */
     font() {
         if (!this.#font) throw new Error("Font not set");
         return this.#font;
@@ -134,6 +135,57 @@ export class TextDrawer {
         boundary.height = boundary.bottom - boundary.top;
 
         return boundary;
+    }
+
+    drawMetrics(text, x, y) {
+        const font = this.font();
+        let offsetX = x;
+        let offsetY = y;
+
+        this.#ctx.save();
+
+        let lineCharIndex = 0;
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const code = ch.charCodeAt(0);
+
+            if (ch === '\n') {
+                this.#ctx.fillStyle = "red";
+                this.#ctx.fillRect(offsetX, offsetY - 2, 4, 4);
+
+                offsetX = x;
+                offsetY += font.advanceY * this.#scaleY;
+                lineCharIndex = 0;
+            } else if (code >= font.codeFrom || code <= font.codeTo) {
+                const glyph = font.glyphs[code - font.codeFrom];
+
+                const scaleX = this.#scaleX;
+                const scaleY = this.#scaleY;
+
+                const glyphWidth = glyph.width * scaleX;
+                const glyphHeight = glyph.height * scaleY;
+
+                const glyphLeft = offsetX + glyph.offsetX * scaleX;
+                const glyphRight = glyphLeft + glyphWidth;
+                const glyphTop = offsetY + glyph.offsetY * scaleY;
+                const glyphBottom = glyphTop + glyphHeight;
+
+                this.#ctx.fillStyle = "red";
+                this.#ctx.fillRect(glyphLeft, glyphTop, devicePixelRatio, glyphHeight);
+
+                this.#ctx.fillStyle = "blue";
+                this.#ctx.fillRect(glyphRight, glyphTop, devicePixelRatio, glyphHeight);
+
+                this.#ctx.fillStyle = "green";
+                this.#ctx.fillRect(offsetX, lineCharIndex % 2 === 0 ? glyphBottom : glyphTop,
+                    glyph.advanceX * scaleX, devicePixelRatio);
+
+                offsetX += glyph.advanceX * scaleX;
+                ++lineCharIndex;
+            }
+        }
+
+        this.#ctx.restore();
     }
 
     _drawChar(ch) {

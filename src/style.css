@@ -180,3 +180,16 @@ button:hover {
     background: rgb(224, 224, 224);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
+
+footer {
+    position: absolute;
+    right: 2rem;
+    bottom: 1rem;
+
+    color: #adadad;
+    font-weight: 200;
+}
+
+footer a {
+    color: #9b9b9b;
+}

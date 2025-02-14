@@ -11,65 +11,72 @@
 <html>
 
 <head>
+    <link type="image/png" sizes="16x16" rel="icon" href="./icons/icons8-font-color-16.png">
+    <link type="image/png" sizes="32x32" rel="icon" href="./icons/icons8-font-color-32.png">
+    <link type="image/png" sizes="96x96" rel="icon" href="./icons/icons8-font-color-96.png">
+
     <title>TrueType to Bitmap Converter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="./style.css" rel="stylesheet" />
+    <link href="./style.css" rel="stylesheet"/>
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            TrueType to Bitmap Font Converter
-        </div>
-
-        <div class="block font">
-            <h3>Font</h3>
-            <select id="font-select">
-            </select>
-
-            <br><br>
-
-            <button id="upload-font">Upload</button>
-        </div>
-
-        <div class="block parameters">
-            <h3>Font Size</h3>
-            <input type="number" id="size-field" value="20" min="1">
-
-            <br><br>
-
-            <h3>Demo text</h3>
-            <input type="text" id="text-field" value="Hello, World!">
-
-            <br><br>
-
-            <h3>Glyphs range</h3>
-            <select id="range-select">
-            </select>
-
-            <br><br>
-
-            <h3>Export format</h3>
-            <select id="format-select">
-            </select>
-
-            <br><br>
-
-            <button id="get-font">Get Font File</button>
-            <br />
-            <button id="get-all-fonts">Get All Fonts</button>
-        </div>
-
-        <div class="block preview">
-            <canvas id="preview"></canvas>
-        </div>
-
-        <div class="block stats">
-            <div id="stats"></div>
-        </div>
+<div class="container">
+    <div class="header">
+        TrueType to Bitmap Font Converter
     </div>
 
-    <script src="./index.js" type="module"></script>
+    <div class="block font">
+        <h3>Font</h3>
+        <select id="font-select">
+        </select>
+
+        <br><br>
+
+        <button id="upload-font">Upload</button>
+    </div>
+
+    <div class="block parameters">
+        <h3>Font Size</h3>
+        <input type="number" id="size-field" value="20" min="1">
+
+        <br><br>
+
+        <h3>Demo text</h3>
+        <input type="text" id="text-field" value="Hello, World!">
+
+        <br><br>
+
+        <h3>Glyphs range</h3>
+        <select id="range-select">
+        </select>
+
+        <br><br>
+
+        <h3>Export format</h3>
+        <select id="format-select">
+        </select>
+
+        <br><br>
+
+        <button id="get-font">Get Font File</button>
+        <br/>
+        <button id="get-all-fonts">Get All Fonts</button>
+    </div>
+
+    <div class="block preview">
+        <canvas id="preview"></canvas>
+    </div>
+
+    <div class="block stats">
+        <div id="stats"></div>
+    </div>
+</div>
+
+<footer>
+    Icons by <a href="https://icons8.com/" target="_blank">Icon8</a>
+</footer>
+<script src="./index.js" type="module"></script>
 </body>
 
 </html>

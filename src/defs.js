@@ -25,6 +25,7 @@ export const FontRanges = {
 }
 
 export const ExportSizes = [12, 16, 20, 28]
+export const Scales = [1, 2, 3, 4];
 
 const CustomFormatBase = {
     dpi: 222,

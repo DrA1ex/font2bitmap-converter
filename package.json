@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prepare": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/",
+    "prepare": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/; ln -sf ../icons ./bundle/",
     "serve": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --servedir=./bundle --watch",
     "bundle": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle"
   },

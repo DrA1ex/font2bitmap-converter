@@ -10,7 +10,7 @@ import {TextDrawer} from "./drawer.js";
 import * as FileUtils from "./utils/file.js"
 import * as FontUtils from "./utils/font";
 
-import {BuiltinFonts, UserFonts, FontRanges, ExportSizes, ExportFormats} from "./defs.js"
+import {BuiltinFonts, UserFonts, FontRanges, ExportSizes, ExportFormats, Scales} from "./defs.js"
 
 const Canvas = document.getElementById("preview");
 
@@ -28,6 +28,7 @@ const Drawer = new TextDrawer(Context);
 Drawer.setColor(0xff000000);
 Drawer.setBackgroundColor(0);
 
+let DrawMetrics = false;
 
 async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
@@ -90,12 +91,18 @@ function getFontOptions() {
 }
 
 async function refreshPreview() {
+    const block = document.getElementById("preview").parentNode;
+    if (block.getAttribute("busy") === "true") {
+        setTimeout(refreshPreview, 300);
+        console.log("Already refreshing. Try again later...");
+        return;
+    }
+
     const text = document.getElementById("text-field").value;
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseInt(document.getElementById("size-field").value);
     const options = getFontOptions();
 
-    const block = document.getElementById("preview").parentNode;
     block.setAttribute("busy", "true");
 
     try {
@@ -104,9 +111,37 @@ async function refreshPreview() {
 
         Context.clearRect(0, 0, Canvas.width, Canvas.height);
 
+        Drawer.setFontScale(1, 1);
         const boundary = Drawer.calcTextBoundaries(text);
-        Drawer.setPosition((Canvas.width - boundary.width) / 2, Canvas.height / 2);
-        Drawer.print(text);
+
+        const spacing = 1.2;
+
+        let selectedScales = [...Scales];
+        let totalHeight = Math.min(
+            selectedScales.reduce((p, scale) => p + (scale + spacing) * boundary.height, 0)
+        );
+
+        if (totalHeight > Canvas.height) {
+            for (let i = Scales.length - 1; i >= 1; i--) {
+                totalHeight -= boundary.height * (Scales[i] + spacing);
+                selectedScales.splice(i, 1);
+                if (totalHeight < Canvas.height) break;
+            }
+        }
+
+        let offsetY = -totalHeight / 2;
+        for (const scale of selectedScales) {
+            Drawer.setFontScale(scale, scale);
+            const x = (Canvas.width - boundary.width * scale) / 2;
+            const y = offsetY + Canvas.height / 2 + boundary.height * scale;
+
+            Drawer.setPosition(x, y);
+            Drawer.print(text);
+            if (DrawMetrics) Drawer.drawMetrics(text, x, y);
+
+            offsetY += boundary.height * (scale + spacing);
+        }
+
 
         document.getElementById("stats").textContent =
             `${bitmapFont.name}, Size: ${options.format.size(bitmapFont)}`
@@ -140,5 +175,10 @@ document.getElementById("format-select").addEventListener("change", () => refres
 document.getElementById("upload-font").addEventListener("click", () => uploadFont());
 document.getElementById("get-font").addEventListener("click", () => downloadFont());
 document.getElementById("get-all-fonts").addEventListener("click", () => downloadAllFonts());
+
+Canvas.addEventListener("mouseup", async () => {
+    DrawMetrics = !DrawMetrics;
+    await refreshPreview();
+})
 
 refreshPreview().catch((e) => console.error(e));
