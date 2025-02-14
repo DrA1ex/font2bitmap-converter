@@ -4,6 +4,16 @@
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
+const HexTokenRe = "(0x[0-9a-fA-F]+)";
+const EscapedTokenRe = "(?:\\\\([;\\\\-]))";
+const OtherTokenRe = "([^;\\\\-])";
+const TokenRe = `(?:${HexTokenRe}|${EscapedTokenRe}|${OtherTokenRe})`;
+
+const SplitTokenRe = "(?:;|$)"
+
+const RangePatternRe = new RegExp(
+    `(${TokenRe})(-${TokenRe}(?=${SplitTokenRe}))?${SplitTokenRe}?`, "g"
+)
 
 export function capitalize(str) {
     function isDigit(char) {
@@ -69,3 +79,49 @@ export function toColor(colorComponents) {
 
     return result;
 }
+
+
+export function parseRange(rangeStr) {
+    const results = new Set();
+
+    // Function to process a range (e.g., a-z, 0xa0-0xb1)
+    function processRange(start, end) {
+        const startCode = isHex(start) ? parseInt(start, 16) : start.charCodeAt(0);
+        const endCode = isHex(end) ? parseInt(end, 16) : end.charCodeAt(0);
+
+        for (let i = startCode; i <= endCode; i++) {
+            results.add(String.fromCharCode(i));
+        }
+    }
+
+    // Function to process individual symbol or code point
+    function processSymbol(symbol) {
+        if (isHex(symbol)) {
+            // If it's a character code in hex, convert to string
+            results.add(String.fromCharCode(parseInt(symbol, 16)));
+        } else {
+            // Otherwise, it's a literal character
+            results.add(symbol);
+        }
+    }
+
+    // Helper function to check if a string is a hex code
+    function isHex(str) {
+        return /^0x[0-9a-fA-F]+$/.test(str);
+    }
+
+    for (const match of rangeStr.matchAll(RangePatternRe)) {
+        const [_1, _2, startHex, startEscaped, startSymb, range, endHex, endEscaped, endSymb] = match;
+
+        const start = startHex || startEscaped || startSymb;
+        if (range) {
+            const end = endHex || endEscaped || endSymb;
+            processRange(start, end);
+        } else if (start) {
+            processSymbol(start);
+        }
+    }
+
+    return Array.from(results).join("");
+}
+

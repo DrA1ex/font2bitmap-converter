@@ -11,6 +11,7 @@ import * as FileUtils from "./utils/file.js"
 import * as FontUtils from "./utils/font";
 
 import {BuiltinFonts, UserFonts, FontRanges, ExportFormats, Scales} from "./defs.js"
+import * as CommonUtils from "./utils/common";
 
 const Canvas = document.getElementById("preview");
 
@@ -37,10 +38,18 @@ const DefaultText = queryParams.get("text");
 const DefaultFontSize = Number.parseInt(queryParams.get("fontSize") || 0);
 const DefaultFontFamily = queryParams.get("fontFamily");
 const DefaultExportFormat = queryParams.get("exportFormat");
-const DefaultExportRange = queryParams.get("exportRange");
 const ExportSizes = (queryParams.get("exportSizes") || "").split(",")
     .map(v => Number.parseInt(v))
     .filter(v => !Number.isNaN(v));
+
+let DefaultExportRange = queryParams.get("exportRange");
+if (DefaultExportRange && !FontRanges[DefaultExportRange]) {
+    const parsedRange = CommonUtils.parseRange(DefaultExportRange);
+    if (parsedRange.length > 0) {
+        DefaultExportRange = "custom";
+        FontRanges[DefaultExportRange] = parsedRange;
+    }
+}
 
 async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
@@ -174,9 +183,9 @@ function initSelect(id, keys, def = null) {
         option.setAttribute("value", key)
         option.textContent = key;
         el.appendChild(option);
-    }
 
-    el.value = def;
+        if (key === def) el.value = def;
+    }
 }
 
 initSelect("font-select", Object.keys(BuiltinFonts), DefaultFontFamily);

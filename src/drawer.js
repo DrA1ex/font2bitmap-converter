@@ -156,7 +156,7 @@ export class TextDrawer {
                 offsetX = x;
                 offsetY += font.advanceY * this.#scaleY;
                 lineCharIndex = 0;
-            } else if (code >= font.codeFrom || code <= font.codeTo) {
+            } else if (code >= font.codeFrom && code <= font.codeTo) {
                 const glyph = font.glyphs[code - font.codeFrom];
 
                 const scaleX = this.#scaleX;
