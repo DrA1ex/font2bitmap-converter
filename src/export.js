@@ -28,7 +28,7 @@ export async function exportFont(family, size, options) {
 
     let rowSize = 0;
     for (let i = 0; i < font.buffer.byteLength; ++i) {
-        const s = `${CommonUtils.toHex(font.buffer[i], bpp)}, `;
+        const s = `${CommonUtils.toHex(font.buffer[i])}, `;
         if (rowSize + s.length >= exportFormat.maxRowSize) {
             result += "\n";
             rowSize = 0;
