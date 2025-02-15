@@ -94,4 +94,4 @@ Contributuins welcomed! Feel free to fork the repository, make changes, and subm
 
 ## License
 
-[GPl-v3.0](LICENSE)
+[GPL-v3.0](LICENSE)
