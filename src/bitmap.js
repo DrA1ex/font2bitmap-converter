@@ -7,6 +7,7 @@
 import {PackedImageWriter} from "./misc/image_writer.js";
 import * as GlyphUtils from "./utils/glyph.js";
 import * as FontUtils from "./utils/font";
+import * as CommonUtils from "./utils/common";
 
 // opentype requires global exports object when enabling hinting.
 // However, there is no exports in ES6 modules
@@ -70,6 +71,8 @@ export function convertFontToBitmap(
 
     const codesSet = new Set(codes);
 
+    let missingGlyphs = 0;
+
     for (let charCode = codeFrom; charCode <= codeTo; charCode++) {
         if (!codesSet.has(charCode)) {
             glyphs.push(new Glyph());
@@ -81,7 +84,13 @@ export function convertFontToBitmap(
 
         const metrics = FontUtils.getMetrics(fontFace, char, correctedFontSize);
         if (!metrics) {
-            console.warn(`Symbol '${char}' not supported by font ${fontName}`);
+            ++missingGlyphs
+            if (missingGlyphs < 50) {
+                console.warn(`Symbol '${char}' (${CommonUtils.toHex(charCode)}) not supported by font "${fontName}"`);
+            } else if (missingGlyphs === 50) {
+                console.warn(`Too much missing glyphs. Next warnings will be skipped.`);
+            }
+
             glyphs.push(new Glyph());
             continue;
         }
@@ -140,15 +149,34 @@ export function convertFontToBitmap(
         context.fillRect(0, -glyph.offsetY, canvasWidth, 1);
     }
 
+    if (missingGlyphs > 0) {
+        console.warn(`Font ${fontName} missing ${missingGlyphs} glyph(s)!`);
+    }
+
     document.body.removeChild(canvas);
+
+    const firstGlyphIndex = glyphs.findIndex(g => g.charCode !== null);
+    const lastGlyphIndex = glyphs.findLastIndex(g => g.charCode !== null);
+
+    if (firstGlyphIndex === -1) {
+        const msg = `Font "${fontName}" doesn't contains any glyphs from selected range!`
+        alert(msg);
+        throw new Error(msg);
+    }
+
+    const missingGlyphsFromStart = firstGlyphIndex;
+    const missingGlyphsFromEnd = glyphs.length - lastGlyphIndex - 1;
+
+    glyphs.splice(lastGlyphIndex + 1)
+    glyphs.splice(0, firstGlyphIndex);
 
     const result = new Font();
     result.name = `${fontName} ${fontSize}pt`;
     result.bpp = bpp;
     result.buffer = Uint8Array.from(buffer);
     result.glyphs = glyphs;
-    result.codeFrom = codeFrom;
-    result.codeTo = codeTo;
+    result.codeFrom = codeFrom + missingGlyphsFromStart;
+    result.codeTo = codeTo - missingGlyphsFromEnd;
     result.advanceY = Math.ceil(correctedFontSize * 1.2);
 
     return result;

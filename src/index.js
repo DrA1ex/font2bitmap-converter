@@ -172,8 +172,8 @@ async function refreshPreview() {
 
         document.getElementById("stats").textContent =
             `${bitmapFont.name}, Size: ${options.format.size(bitmapFont)}`
-            + `, Glyphs: ${options.charSet.length}`
-            + `, ${options.bpp} bpp, ${options.dpi} dpi`;
+            + `, Glyphs: ${bitmapFont.glyphs.length}`
+            + `, ${bitmapFont.bpp} bpp, ${options.dpi} dpi`;
     } finally {
         block.setAttribute("busy", "false");
     }
