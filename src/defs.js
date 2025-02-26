@@ -20,7 +20,7 @@ export const UserFonts = {};
 
 export const FontRanges = {
     "default": CommonUtils.generateString(' ', '~'),
-    "light": CommonUtils.generateString('a', 'z', 'A', 'Z', '0', '9') + " ,.!?",
+    "light": CommonUtils.generateString('A', 'Z', '0', '9') + " ,.!?",
     "russian": CommonUtils.generateString(' ', '~', 'А', 'Я', 'а', 'я') + "ёЁ",
 }
 
