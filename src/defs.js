@@ -52,9 +52,9 @@ const CustomFormatBase = {
     ],
     size(font) {
         return font.buffer.byteLength
-            + 9 * font.glyphs.length // Glyphs structs total size
+            + 24 * font.glyphs.length // Glyphs structs total size
             + font.name.length
-            + 16; // Font struct size
+            + 22; // Font struct size
     }
 };
 
