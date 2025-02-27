@@ -22,9 +22,12 @@ export const FontRanges = {
     "default": CommonUtils.generateString(' ', '~'),
     "light": CommonUtils.generateString('A', 'Z', '0', '9') + " ,.!?",
     "russian": CommonUtils.generateString(' ', '~', 'А', 'Я', 'а', 'я') + "ёЁ",
+    "all": CommonUtils.parseRange("0x0-0xffff")
 }
 
 export const Scales = [1, 2, 3, 4];
+
+export const PreviewSymbolsCount = 5;
 
 const CustomFormatBase = {
     dpi: 222,

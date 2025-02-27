@@ -10,7 +10,7 @@ import {TextDrawer} from "./drawer.js";
 import * as FileUtils from "./utils/file.js"
 import * as FontUtils from "./utils/font";
 
-import {BuiltinFonts, UserFonts, FontRanges, ExportFormats, Scales} from "./defs.js"
+import {BuiltinFonts, UserFonts, FontRanges, ExportFormats, Scales, PreviewSymbolsCount} from "./defs.js"
 import * as CommonUtils from "./utils/common";
 
 const Canvas = document.getElementById("preview");
@@ -125,7 +125,7 @@ async function refreshPreview() {
         return;
     }
 
-    const text = document.getElementById("text-field").value;
+    let text = document.getElementById("text-field").value;
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseInt(document.getElementById("size-field").value);
     const options = getFontOptions();
@@ -135,6 +135,16 @@ async function refreshPreview() {
     try {
         const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, options);
         Drawer.setFont(bitmapFont);
+
+        const includedChars = Array.from(text).filter(ch => bitmapFont.glyphs.find(g => g.char === ch));
+        if (includedChars.length === 0) {
+            text = "";
+            const validGlyphs = bitmapFont.glyphs.filter(g => g.char !== null);
+            const glyphCount = validGlyphs.length;
+            for (let i = 0; i < glyphCount; i += glyphCount / PreviewSymbolsCount) {
+                text += validGlyphs[Math.floor(i)].char;
+            }
+        }
 
         Context.clearRect(0, 0, Canvas.width, Canvas.height);
 
