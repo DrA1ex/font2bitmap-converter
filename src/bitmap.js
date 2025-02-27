@@ -28,6 +28,7 @@ class Font {
 export class Glyph {
     char = null;
     charCode = null;
+    name = null;
     offset = 0;
     width = 0;
     height = 0;
@@ -98,6 +99,7 @@ export function convertFontToBitmap(
         const glyph = new Glyph();
         glyph.char = char;
         glyph.charCode = charCode;
+        glyph.name = fontGlyph.name;
         glyph.offset = buffer.length;
         glyph.width = metrics.width;
         glyph.height = metrics.height;

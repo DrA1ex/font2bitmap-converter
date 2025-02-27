@@ -55,8 +55,13 @@ export async function exportFont(family, size, options) {
         const glyph = font.glyphs[i];
 
         result += exportFormat.align;
-        result += placeholders(exportFormat.entryGlyph, glyph);
-        result += placeholders(exportFormat.commentGlyph, glyph);
+        if (glyph.width > 0 && glyph.height > 0) {
+            result += placeholders(exportFormat.entryGlyph, glyph);
+            result += placeholders(exportFormat.commentGlyph, glyph);
+        } else {
+            result += placeholders(exportFormat.emptyGlyph, glyph);
+        }
+
         result += "\n";
     }
 
@@ -93,7 +98,8 @@ function replacePlaceholders(str, font, fontKey, glyph = null) {
             .replaceAll("%offsetX%", glyph.offsetX)
             .replaceAll("%offsetY%", glyph.offsetY)
             .replaceAll("%charCode%", glyph.charCode ? CommonUtils.toHex(glyph.charCode) : "")
-            .replaceAll("%char%", glyph.char || "");
+            .replaceAll("%char%", glyph.char || "")
+            .replaceAll("%name%", glyph.name || "n/a");
     }
 
     return result;

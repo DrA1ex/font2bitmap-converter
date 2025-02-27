@@ -39,7 +39,8 @@ const CustomFormatBase = {
     declarationBitmaps: "const uint8_t %fontKey%Bitmaps[] = {",
     declarationGlyphs: "const Glyph %fontKey%Glyphs[] = {",
     entryGlyph: "{ %offset%, %width%, %height%, %advanceX%, %offsetX%, %offsetY% },",
-    commentGlyph: " // %charCode% '%char%'",
+    commentGlyph: " // %charCode%\t\t'%char%'\t\t%name%",
+    emptyGlyph: "{ 0, 0, 0, 0, 0, 0, 0},",
     declarationsFont: [
         "const Font %fontKey% = {",
         `    "%fontDisplayName%", %bpp%,`,
@@ -70,6 +71,7 @@ export const ExportFormats = {
         declarationGlyphs: "const GFXglyph %fontKey%Glyphs[] PROGMEM = {",
         entryGlyph: "{ %offset%, %width%, %height%, %advanceX%, %offsetX%, %offsetY% },",
         commentGlyph: " // %charCode% '%char%'",
+        emptyGlyph: "{ 0, 0, 0, 0, 0, 0, 0},",
         declarationsFont: [
             "const GFXfont %fontKey% = {",
             `    (uint8_t *) %fontKey%Bitmaps,`,
