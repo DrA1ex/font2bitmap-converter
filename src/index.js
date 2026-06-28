@@ -163,7 +163,7 @@ async function refreshPreview() {
 
         Context.clearRect(0, 0, Canvas.width, Canvas.height);
 
-        Drawer.setFontScale(1, 1);
+        Drawer.setFontScale(devicePixelRatio, devicePixelRatio);
         const boundary = Drawer.calcTextBoundaries(text);
 
         const spacing = 1.2;
@@ -184,11 +184,12 @@ async function refreshPreview() {
         let offsetY = -totalHeight / 2;
         let gridOrigin = null;
         const baseScale = selectedScales[0];
+        const baseRenderScale = baseScale * devicePixelRatio;
         const baseX = (Canvas.width - boundary.width * baseScale) / 2;
         const baseY = offsetY + Canvas.height / 2 + boundary.height * baseScale;
 
         if (OverlayMode === 2) {
-            Drawer.setFontScale(baseScale, baseScale);
+            Drawer.setFontScale(baseRenderScale, baseRenderScale);
             Drawer.setPosition(baseX, baseY);
             const baseBoundary = Drawer.calcTextBoundaries(text);
             gridOrigin = {x: baseBoundary.left, y: baseBoundary.top};
@@ -196,7 +197,8 @@ async function refreshPreview() {
         }
 
         for (const scale of selectedScales) {
-            Drawer.setFontScale(scale, scale);
+            const renderScale = scale * devicePixelRatio;
+            Drawer.setFontScale(renderScale, renderScale);
             const x = (Canvas.width - boundary.width * scale) / 2;
             const y = offsetY + Canvas.height / 2 + boundary.height * scale;
 
