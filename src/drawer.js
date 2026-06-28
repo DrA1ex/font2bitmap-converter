@@ -262,11 +262,12 @@ export class TextDrawer {
 
     _glyphByCode(code) {
         const font = this.font();
-        if (code < font.codeFrom || code > font.codeTo) return null;
 
         if (font.compact) {
             return font.glyphs.find(g => g.charCode === code) || null;
         }
+
+        if (code < font.codeFrom || code > font.codeTo) return null;
 
         return font.glyphs[code - font.codeFrom] || null;
     }

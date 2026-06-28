@@ -56,11 +56,12 @@ export async function exportFont(family, size, options) {
     }
     for (let i = 0; i < font.glyphs.length; i++) {
         const glyph = font.glyphs[i];
+        const commentGlyph = font.compact ? glyphWithFileCode(font, glyph, i) : glyph;
 
         result += exportFormat.align;
         if (glyph.width > 0 && glyph.height > 0) {
             result += placeholders(exportFormat.entryGlyph, glyph);
-            result += placeholders(exportFormat.commentGlyph, glyph);
+            result += placeholders(exportFormat.commentGlyph, commentGlyph);
         } else {
             result += placeholders(exportFormat.emptyGlyph, glyph);
         }
@@ -79,6 +80,14 @@ export async function exportFont(family, size, options) {
     FileUtils.saveFile(result, `${fontKey}.h`, "text/x-c")
 }
 
+
+function glyphWithFileCode(font, glyph, index) {
+    const charCode = font.codeFrom + index;
+    return {
+        ...glyph,
+        charCode,
+    };
+}
 
 function replacePlaceholders(str, font, fontKey, glyph = null) {
     if (str instanceof Array) {

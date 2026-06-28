@@ -189,10 +189,10 @@ export function convertFontToBitmap(
     result.glyphs = resultGlyphs;
     result.compact = compact;
     result.codeFrom = compact
-        ? Math.min(...resultGlyphs.map(g => g.charCode))
+        ? resultGlyphs[0].charCode
         : codeFrom + missingGlyphsFromStart;
     result.codeTo = compact
-        ? Math.max(...resultGlyphs.map(g => g.charCode))
+        ? result.codeFrom + resultGlyphs.length - 1
         : codeTo - missingGlyphsFromEnd;
     result.advanceY = Math.ceil(correctedFontSize * 1.2);
 
