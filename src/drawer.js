@@ -188,6 +188,48 @@ export class TextDrawer {
         this.#ctx.restore();
     }
 
+    drawPixelGrid(originX, originY) {
+        const left = 0;
+        const top = 0;
+        const right = this.#ctx.canvas.width;
+        const bottom = this.#ctx.canvas.height;
+        const dotStep = 10 * devicePixelRatio;
+        const dashStep = 50 * devicePixelRatio;
+        const firstDotX = originX + Math.floor((left - originX) / dotStep) * dotStep;
+        const firstDotY = originY + Math.floor((top - originY) / dotStep) * dotStep;
+        const firstDashX = originX + Math.floor((left - originX) / dashStep) * dashStep;
+        const firstDashY = originY + Math.floor((top - originY) / dashStep) * dashStep;
+
+        this.#ctx.save();
+
+        this.#ctx.fillStyle = "rgba(255, 0, 0, 0.75)";
+        for (let y = firstDotY; y <= bottom; y += dotStep) {
+            for (let x = firstDotX; x <= right; x += dotStep) {
+                this.#ctx.fillRect(Math.round(x), Math.round(y), devicePixelRatio, devicePixelRatio);
+            }
+        }
+
+        this.#ctx.strokeStyle = "rgba(0, 64, 255, 0.65)";
+        this.#ctx.lineWidth = devicePixelRatio;
+        this.#ctx.setLineDash([3 * devicePixelRatio, 3 * devicePixelRatio]);
+
+        for (let x = firstDashX; x <= right; x += dashStep) {
+            this.#ctx.beginPath();
+            this.#ctx.moveTo(Math.round(x) + 0.5, top);
+            this.#ctx.lineTo(Math.round(x) + 0.5, bottom);
+            this.#ctx.stroke();
+        }
+
+        for (let y = firstDashY; y <= bottom; y += dashStep) {
+            this.#ctx.beginPath();
+            this.#ctx.moveTo(left, Math.round(y) + 0.5);
+            this.#ctx.lineTo(right, Math.round(y) + 0.5);
+            this.#ctx.stroke();
+        }
+
+        this.#ctx.restore();
+    }
+
     _drawChar(ch) {
         const glyph = this._glyphByCode(ch.charCodeAt(0));
         if (!glyph) return;

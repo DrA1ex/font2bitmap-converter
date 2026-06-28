@@ -29,7 +29,10 @@ const Drawer = new TextDrawer(Context);
 Drawer.setColor(0xff000000);
 Drawer.setBackgroundColor(0);
 
-let DrawMetrics = false;
+let OverlayMode = 0;
+const OverlayModesCount = 3;
+let PreviewPointer = null;
+let PreviewPointerFrame = null;
 
 
 const queryParams = new URLSearchParams(window.location.search);
@@ -179,16 +182,38 @@ async function refreshPreview() {
         }
 
         let offsetY = -totalHeight / 2;
+        let gridOrigin = null;
+        const baseScale = selectedScales[0];
+        const baseX = (Canvas.width - boundary.width * baseScale) / 2;
+        const baseY = offsetY + Canvas.height / 2 + boundary.height * baseScale;
+
+        if (OverlayMode === 2) {
+            Drawer.setFontScale(baseScale, baseScale);
+            Drawer.setPosition(baseX, baseY);
+            const baseBoundary = Drawer.calcTextBoundaries(text);
+            gridOrigin = {x: baseBoundary.left, y: baseBoundary.top};
+            Drawer.drawPixelGrid(gridOrigin.x, gridOrigin.y);
+        }
+
         for (const scale of selectedScales) {
             Drawer.setFontScale(scale, scale);
             const x = (Canvas.width - boundary.width * scale) / 2;
             const y = offsetY + Canvas.height / 2 + boundary.height * scale;
 
             Drawer.setPosition(x, y);
+            const scaledBoundary = Drawer.calcTextBoundaries(text);
             Drawer.print(text);
-            if (DrawMetrics) Drawer.drawMetrics(text, x, y);
+            if (scale > 1) drawScaleLabel(scale, scaledBoundary);
+
+            if (OverlayMode === 1) {
+                Drawer.drawMetrics(text, x, y);
+            }
 
             offsetY += boundary.height * (scale + spacing);
+        }
+
+        if (OverlayMode === 2 && PreviewPointer && gridOrigin) {
+            drawGridPointer(PreviewPointer, gridOrigin);
         }
 
 
@@ -199,6 +224,68 @@ async function refreshPreview() {
     } finally {
         block.setAttribute("busy", "false");
     }
+}
+
+function drawGridPointer(pointer, origin) {
+    const length = 50 * devicePixelRatio;
+    const lineWidth = devicePixelRatio;
+    const x = Math.round(pointer.x);
+    const y = Math.round(pointer.y);
+    const label = [
+        Math.round((pointer.x - origin.x) / devicePixelRatio),
+        Math.round((pointer.y - origin.y) / devicePixelRatio),
+    ].join(", ");
+    const padding = 4 * devicePixelRatio;
+    const fontSize = 12 * devicePixelRatio;
+
+    Context.save();
+
+    Context.strokeStyle = "rgba(0, 160, 0, 0.9)";
+    Context.lineWidth = lineWidth;
+    Context.beginPath();
+    Context.moveTo(Math.max(0, x - length), y + 0.5);
+    Context.lineTo(Math.min(Canvas.width, x + length), y + 0.5);
+    Context.moveTo(x + 0.5, Math.max(0, y - length));
+    Context.lineTo(x + 0.5, Math.min(Canvas.height, y + length));
+    Context.stroke();
+
+    Context.font = `${fontSize}px Helvetica Neue, Lucida Grande, Arial, sans-serif`;
+    Context.textBaseline = "top";
+
+    const metrics = Context.measureText(label);
+    const labelWidth = metrics.width + padding * 2;
+    const labelHeight = fontSize + padding * 2;
+    const labelX = Math.max(0, Math.min(Canvas.width - labelWidth, x + 8 * devicePixelRatio));
+    const labelY = Math.max(0, Math.min(Canvas.height - labelHeight, y + 8 * devicePixelRatio));
+
+    Context.fillStyle = "rgba(255, 255, 255, 0.85)";
+    Context.fillRect(labelX, labelY, labelWidth, labelHeight);
+    Context.fillStyle = "rgba(0, 120, 0, 0.95)";
+    Context.fillText(label, labelX + padding, labelY + padding);
+
+    Context.restore();
+}
+
+function drawScaleLabel(scale, boundary) {
+    const padding = 4 * devicePixelRatio;
+    const fontSize = 12 * devicePixelRatio;
+    const label = `x${scale}`;
+
+    Context.save();
+    Context.font = `${fontSize}px Helvetica Neue, Lucida Grande, Arial, sans-serif`;
+    Context.textBaseline = "middle";
+
+    const metrics = Context.measureText(label);
+    const width = metrics.width + padding * 2;
+    const height = fontSize + padding;
+    const x = Math.max(6 * devicePixelRatio, boundary.left - width - 6 * devicePixelRatio);
+    const y = boundary.top + boundary.height / 2;
+
+    Context.fillStyle = "rgba(255, 255, 255, 0.8)";
+    Context.fillRect(x, y - height / 2, width, height);
+    Context.fillStyle = "rgba(51, 51, 51, 0.85)";
+    Context.fillText(label, x + padding, y);
+    Context.restore();
 }
 
 function initSelect(id, keys, def = null) {
@@ -245,8 +332,31 @@ document.getElementById("get-font").addEventListener("click", () => downloadFont
 document.getElementById("get-all-fonts").addEventListener("click", () => downloadAllFonts());
 
 Canvas.addEventListener("mouseup", async () => {
-    DrawMetrics = !DrawMetrics;
+    OverlayMode = (OverlayMode + 1) % OverlayModesCount;
     await refreshPreview();
+})
+
+Canvas.addEventListener("mousemove", async (e) => {
+    const rect = Canvas.getBoundingClientRect();
+    PreviewPointer = {
+        x: (e.clientX - rect.left) * devicePixelRatio,
+        y: (e.clientY - rect.top) * devicePixelRatio,
+    };
+
+    if (OverlayMode === 2 && PreviewPointerFrame === null) {
+        PreviewPointerFrame = requestAnimationFrame(() => {
+            PreviewPointerFrame = null;
+            refreshPreview().catch((e) => console.error(e));
+        });
+    }
+})
+
+Canvas.addEventListener("mouseleave", async () => {
+    PreviewPointer = null;
+
+    if (OverlayMode === 2) {
+        await refreshPreview();
+    }
 })
 
 refreshPreview().catch((e) => console.error(e));
