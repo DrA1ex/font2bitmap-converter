@@ -107,10 +107,9 @@ export class TextDrawer {
                 continue;
             }
 
-            const code = ch.charCodeAt(0);
-            if (code < font.codeFrom || code > font.codeTo) continue;
+            const glyph = this._glyphByCode(ch.charCodeAt(0));
+            if (!glyph) continue;
 
-            const glyph = font.glyphs[code - font.codeFrom];
             const left = cursorX + glyph.offsetX * scaleX;
             const top = cursorY + glyph.offsetY * scaleY;
             const right = left + glyph.width * scaleX;
@@ -156,8 +155,9 @@ export class TextDrawer {
                 offsetX = x;
                 offsetY += font.advanceY * this.#scaleY;
                 lineCharIndex = 0;
-            } else if (code >= font.codeFrom && code <= font.codeTo) {
-                const glyph = font.glyphs[code - font.codeFrom];
+            } else {
+                const glyph = this._glyphByCode(code);
+                if (!glyph) continue;
 
                 const scaleX = this.#scaleX;
                 const scaleY = this.#scaleY;
@@ -189,11 +189,10 @@ export class TextDrawer {
     }
 
     _drawChar(ch) {
-        const font = this.font();
-        const code = ch.charCodeAt(0);
-        if (code < font.codeFrom || code > font.codeTo) return;
+        const glyph = this._glyphByCode(ch.charCodeAt(0));
+        if (!glyph) return;
 
-        const glyph = font.glyphs[code - font.codeFrom];
+        const font = this.font();
         const scaleX = this.#scaleX;
         const scaleY = this.#scaleY;
 
@@ -217,6 +216,17 @@ export class TextDrawer {
         }
 
         this.#cursorX += glyph.advanceX * scaleX;
+    }
+
+    _glyphByCode(code) {
+        const font = this.font();
+        if (code < font.codeFrom || code > font.codeTo) return null;
+
+        if (font.compact) {
+            return font.glyphs.find(g => g.charCode === code) || null;
+        }
+
+        return font.glyphs[code - font.codeFrom] || null;
     }
 
     _fillRect(x, y, w, h, color) {

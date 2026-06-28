@@ -150,6 +150,22 @@ input[type="radio"] {
     width: auto;
 }
 
+input[type="checkbox"] {
+    width: auto;
+    accent-color: #FFC107;
+    cursor: pointer;
+}
+
+.checkbox-label {
+    color: #333;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 300;
+    margin: 0.2rem 0;
+}
+
 input[type="number"],
 input[type="text"],
 select {

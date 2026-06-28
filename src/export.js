@@ -51,6 +51,9 @@ export async function exportFont(family, size, options) {
 
     result += placeholders(exportFormat.declarationGlyphs);
     result += "\n";
+    if (font.compact) {
+        result += `${exportFormat.align}// Compact font: empty glyphs are omitted; entries follow the selected range order.\n`;
+    }
     for (let i = 0; i < font.glyphs.length; i++) {
         const glyph = font.glyphs[i];
 

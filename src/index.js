@@ -43,13 +43,16 @@ const ExportSizes = (queryParams.get("exportSizes") || "").split(",")
     .filter(v => !Number.isNaN(v));
 
 let DefaultExportRange = queryParams.get("exportRange");
+let DefaultCustomRange = "";
 if (DefaultExportRange && !FontRanges[DefaultExportRange]) {
     const parsedRange = CommonUtils.parseRange(DefaultExportRange);
     if (parsedRange.length > 0) {
         DefaultExportRange = "custom";
+        DefaultCustomRange = queryParams.get("exportRange");
         FontRanges[DefaultExportRange] = parsedRange;
     }
 }
+FontRanges.custom ??= "";
 
 async function uploadFont() {
     const file = await FileUtils.openFile("font/ttf", false)
@@ -99,6 +102,14 @@ function getSelectedFont() {
 
 function getFontRange() {
     const range = document.getElementById("range-select").value;
+    if (range === "custom") {
+        const customRange = document.getElementById("custom-range-field").value;
+        const parsedRange = CommonUtils.parseRange(customRange);
+        FontRanges.custom = parsedRange;
+
+        return parsedRange || FontRanges.default;
+    }
+
     return FontRanges[range] || FontRanges.default
 }
 
@@ -112,6 +123,7 @@ function getFontOptions() {
     return {
         format,
         charSet: getFontRange(),
+        compact: document.getElementById("compact-field").checked,
         bpp: format.bpp,
         dpi: format.dpi,
     }
@@ -201,18 +213,32 @@ function initSelect(id, keys, def = null) {
     }
 }
 
+function updateCustomRangeField() {
+    const range = document.getElementById("range-select").value;
+    const hidden = range !== "custom";
+    document.getElementById("custom-range-break").hidden = hidden;
+    document.getElementById("custom-range-field").hidden = hidden;
+}
+
 initSelect("font-select", Object.keys(BuiltinFonts), DefaultFontFamily);
 initSelect("range-select", Object.keys(FontRanges), DefaultExportRange);
 initSelect("format-select", Object.keys(ExportFormats), DefaultExportFormat);
 
 if (DefaultFontSize) document.getElementById("size-field").value = DefaultFontSize;
 if (DefaultText) document.getElementById("text-field").value = DefaultText;
+if (DefaultCustomRange) document.getElementById("custom-range-field").value = DefaultCustomRange;
+updateCustomRangeField();
 
 document.getElementById("text-field").addEventListener("keyup", () => refreshPreview());
 document.getElementById("size-field").addEventListener("change", () => refreshPreview());
 document.getElementById("font-select").addEventListener("change", () => refreshPreview());
-document.getElementById("range-select").addEventListener("change", () => refreshPreview());
+document.getElementById("range-select").addEventListener("change", () => {
+    updateCustomRangeField();
+    refreshPreview();
+});
+document.getElementById("custom-range-field").addEventListener("input", () => refreshPreview());
 document.getElementById("format-select").addEventListener("change", () => refreshPreview());
+document.getElementById("compact-field").addEventListener("change", () => refreshPreview());
 
 document.getElementById("upload-font").addEventListener("click", () => uploadFont());
 document.getElementById("get-font").addEventListener("click", () => downloadFont());

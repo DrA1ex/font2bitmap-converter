@@ -19,6 +19,7 @@ class Font {
     bpp;
     buffer;
     glyphs;
+    compact;
     codeFrom;
     codeTo;
     advanceY;
@@ -47,12 +48,13 @@ export class Glyph {
  * @param {string} fontName - Name of the font.
  * @param {Object} fontSize - Font size in px
  * @param {string} charSet - String of characters in this font range.
+ * @param {boolean} [compact=false]- Omit empty glyphs from the result.
  * @param {number} [bpp=1]- Bits per pixel (1, 2, 4, 8)
  * @param {number} [dpi=222]- Screen DPI
  * @returns {Font} - A Font object representing all glyphs with their bitmapped data.
  */
 export function convertFontToBitmap(
-    fontFace, fontName, fontSize, {charSet, bpp = 1, dpi = 222}
+    fontFace, fontName, fontSize, {charSet, compact = false, bpp = 1, dpi = 222}
 ) {
     bpp = Math.max(1, Math.min(8, bpp - bpp % 2));
 
@@ -64,8 +66,8 @@ export function convertFontToBitmap(
 
     const correctedFontSize = Math.floor((fontSize * dpi) / 96);
 
-    const codes = Array.from(charSet).map(c => c.charCodeAt(0));
-    codes.sort((a, b) => a - b);
+    const orderedCodes = Array.from(charSet).map(c => c.charCodeAt(0));
+    const codes = [...orderedCodes].sort((a, b) => a - b);
 
     const codeFrom = codes[0];
     const codeTo = codes.at(-1);
@@ -74,8 +76,12 @@ export function convertFontToBitmap(
 
     let missingGlyphs = 0;
 
-    for (let charCode = codeFrom; charCode <= codeTo; charCode++) {
-        if (!codesSet.has(charCode)) {
+    const codesToRender = compact
+        ? orderedCodes
+        : new Array(codeTo - codeFrom + 1).fill(0).map((_, i) => codeFrom + i);
+
+    for (const charCode of codesToRender) {
+        if (!compact && !codesSet.has(charCode)) {
             glyphs.push(new Glyph());
             continue;
         }
@@ -92,7 +98,9 @@ export function convertFontToBitmap(
                 console.warn(`Too much missing glyphs. Next warnings will be skipped.`);
             }
 
-            glyphs.push(new Glyph());
+            if (!compact) {
+                glyphs.push(new Glyph());
+            }
             continue;
         }
 
@@ -172,13 +180,20 @@ export function convertFontToBitmap(
     glyphs.splice(lastGlyphIndex + 1)
     glyphs.splice(0, firstGlyphIndex);
 
+    const resultGlyphs = compact ? glyphs.filter(g => g.charCode !== null) : glyphs;
+
     const result = new Font();
     result.name = `${fontName} ${fontSize}pt`;
     result.bpp = bpp;
     result.buffer = Uint8Array.from(buffer);
-    result.glyphs = glyphs;
-    result.codeFrom = codeFrom + missingGlyphsFromStart;
-    result.codeTo = codeTo - missingGlyphsFromEnd;
+    result.glyphs = resultGlyphs;
+    result.compact = compact;
+    result.codeFrom = compact
+        ? Math.min(...resultGlyphs.map(g => g.charCode))
+        : codeFrom + missingGlyphsFromStart;
+    result.codeTo = compact
+        ? Math.max(...resultGlyphs.map(g => g.charCode))
+        : codeTo - missingGlyphsFromEnd;
     result.advanceY = Math.ceil(correctedFontSize * 1.2);
 
     return result;
