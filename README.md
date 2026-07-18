@@ -1,139 +1,124 @@
 # TrueType to Bitmap Font Converter
 
-A browser and command-line converter that rasterizes TrueType/OpenType fonts into packed bitmap data for embedded renderers and Adafruit GFX.
+A browser and command-line tool for converting TrueType/OpenType fonts into packed bitmap fonts for embedded applications and Adafruit GFX.
 
 **Web application:** https://dra1ex.github.io/font2bitmap-converter/
 
-<img max-width="1000" alt="Web UI" src="https://github.com/user-attachments/assets/30f127c1-40e4-4c1b-92f7-384c7096621b" />
+<img max-width="1000" alt="Font converter web interface" src="https://github.com/user-attachments/assets/30f127c1-40e4-4c1b-92f7-384c7096621b" />
 
 ## Features
 
-- Built-in Roboto and JetBrains Mono families, plus uploaded `.ttf`, `.otf`, and `.woff` fonts.
-- 1, 2, 4, and 8 bits per pixel for the custom format.
-- Hinted path rasterization with protected glyph bounds and 4x coverage supersampling.
-- Correct handling of negative bearings, empty glyphs, supplementary Unicode code points, and font line metrics.
-- A resizable preview canvas with 1x–4x samples, metrics/grid overlays, and a cursor-following magnifier.
-- The magnifier uses 5x zoom and switches to 10x while Ctrl, Alt, or Shift is held.
+- Built-in Roboto and JetBrains Mono fonts, plus uploaded `.ttf`, `.otf`, and `.woff` files.
+- Custom bitmap output at 1, 2, 4, or 8 bits per pixel.
+- Adafruit GFX output at 1 bit per pixel.
 - Dense, Compact, and ASCII first glyph layouts.
-- Built-in Basic/Full European and Basic/Full Slavic character presets alongside the existing ranges.
-- Strict missing-glyph validation in both the browser UI and CLI.
-- Adafruit GFX export, the full Unicode32 ABI v2, and an optional compact16 BMP-only ABI profile.
+- Unicode32 and BMP-only `compact16` ABI profiles.
+- Built-in character presets and custom Unicode ranges.
+- Missing-glyph detection with an optional strict export mode.
+- Interactive preview with grid, glyph metrics, scaling, and a 5x/10x magnifier.
+- Headless CLI for reproducible font generation.
 
-## Size and DPI behavior
+## Browser usage
 
-Both Custom and Adafruit exports preserve the converter's original sizing behavior:
+1. Select a built-in font or upload your own.
+2. Choose the font size, output format, and character set.
+3. Select a glyph layout and ABI profile when using a Custom format.
+4. Inspect the preview and memory statistics.
+5. Download one font or all configured sizes.
 
-```text
-raster pixels = floor(size × DPI / 96)
-```
+The summary below the preview reports bitmap, glyph-table, range-table, and total output sizes. Non-fatal warnings are shown through the warning icon at the beginning of the summary.
 
-The Custom DPI is 222. The Adafruit DPI is 141. This intentionally avoids the larger output produced by changing Adafruit to a `/72` point conversion.
+### Strict export
+
+Strict export stops generation when the selected font does not contain every requested character. Without strict mode, supported glyphs are exported and all missing code points are reported as warnings.
 
 ## Character presets
 
-The existing **Default**, **Light**, **Russian**, **All**, and **Custom** ranges remain unchanged. Four additional presets are available:
+Every language preset contains the complete **Default** set plus its additional characters.
 
-- **Basic European** — **Default** plus a compact Western European set for common French, German, Italian, Spanish, Portuguese, and Dutch text. It intentionally excludes Nordic and Central/Eastern European letters.
-- **Full European** — **Default** plus Latin-1 Supplement, Latin Extended-A, modern Romanian `Ș/ș` and `Ț/ț`, `ẞ`, Nordic letters, Central/Eastern European Latin letters, and common European typography.
-- **Basic Slavic** — **Default** plus the complete Russian alphabet and the core Ukrainian `Є/є`, `І/і`, `Ї/ї`, `Ґ/ґ` and Belarusian `Ў/ў` letters.
-- **Full Slavic** — **Default** plus the complete `U+0400..U+045F` Cyrillic set and Ukrainian `Ґ/ґ`.
+- **Default** — printable ASCII.
+- **Light** — a smaller general-purpose subset.
+- **Russian** — Default plus the Russian alphabet.
+- **Basic European** — common Western European Latin characters for languages such as French, German, Italian, Spanish, Portuguese, and Dutch. It excludes Nordic and Central/Eastern European extensions.
+- **Full European** — broad European Latin coverage, including Nordic and Central/Eastern European letters and common typography.
+- **Basic Slavic** — Russian plus the core Ukrainian `Є/є`, `І/і`, `Ї/ї`, `Ґ/ґ` and Belarusian `Ў/ў` letters.
+- **Full Slavic** — broad modern Slavic Cyrillic coverage.
+- **All** — every usable Unicode mapping exposed by the selected font.
+- **Custom** — a user-defined list of characters and ranges.
 
-Every language preset contains the complete **Default** character set and then adds language-specific characters. The European and Slavic presets are independent. **Russian** remains a separate smaller preset. Missing glyphs are reported by the normal strict/non-strict export logic.
+Missing characters depend on the selected font and are handled by strict/non-strict export.
 
 ## Glyph layouts
 
-The **Glyph layout** option controls the relationship between a Unicode code point and its glyph-array index. The exact mode is stored in `Font.flags`.
-
-The named **all** range is resolved lazily from the selected font's Unicode `cmap`. It includes only mappings that can be represented by the bitmap ABI, instead of constructing and scanning a 65,536-character BMP string. The selected layout is preserved: choosing Dense still creates one continuous slot span from the first mapped code point to the last, while Compact stores mapped code points only.
+The selected layout is stored in `Font.flags` and determines how a Unicode code point maps to a glyph slot.
 
 ### Dense
 
-Every code point from `codeFrom` through `codeTo` has a glyph entry. Sparse gaps and unsupported characters use an empty placeholder.
+Dense creates one glyph slot for every code point between the exported minimum and maximum values:
 
 ```cpp
-index = codepoint - font.codeFrom;
+index = codePoint - font.codeFrom;
 ```
 
-Leading and trailing unsupported entries are removed, so `codeFrom` and `codeTo` are the actual minimum and maximum exported code points.
+Unsupported values inside the span use zero placeholders. Dense is simple and fast, but sparse Unicode selections can produce very large tables. The UI warns about large spans; Compact is usually preferable for sparse sets.
 
-Dense is the only mode supported by the standard Adafruit `GFXfont` structure.
-
-Dense spans above 4,096 glyph slots produce a warning. Spans above 65,536 slots are rejected by default because a sparse selection such as `A;0x1F600` would allocate every intermediate glyph slot. Use Compact, ASCII first, or explicitly opt in with the CLI `--allow-large-dense` flag.
-
-Explicit custom Dense ranges still reject spans crossing `U+D800..U+DFFF`, because those values are not Unicode scalar values. The named **all** selection is allowed to cross the block: it reserves 2,048 unreachable zero-placeholder slots so that the Dense index formula remains continuous. A warning is shown, and the user may select Compact to avoid those slots.
+Adafruit GFX uses Dense because `GFXfont` does not contain a range table.
 
 ### Compact
 
-Only selected and supported glyphs are stored. The glyph array is sorted by Unicode code point.
-
-A separate sorted `GlyphRange` array maps code points to glyph offsets:
+Compact stores only supported selected glyphs. A sorted range table maps continuous Unicode ranges to continuous glyph intervals:
 
 ```cpp
-typedef struct GlyphRange {
-    uint32_t codeFrom;
-    uint32_t codeTo;
-    uint32_t glyphOffset;
-} GlyphRange;
+glyphIndex = range.glyphOffset + codePoint - range.codeFrom;
 ```
 
-Continuous code points with continuous glyph offsets are merged into one range. Isolated characters are emitted as singleton ranges where `codeFrom == codeTo`.
-
-Compact is the recommended layout for localized and sparse Unicode fonts.
+Compact is the recommended layout for localized fonts and sparse Unicode sets.
 
 ### ASCII first
 
-Glyph indices `0..127` always correspond directly to ASCII code points `0x00..0x7f`:
+ASCII first reserves glyph slots `0..127` for the corresponding ASCII code points. Non-ASCII glyphs follow immediately after them and are resolved through the range table.
 
-```cpp
-index = codepoint;
-```
+Use this when direct ASCII indexing is useful and the fixed 128-slot base is acceptable.
 
-Unselected or unsupported ASCII entries remain zeroed placeholders. Supported non-ASCII glyphs are appended immediately after index 127 and resolved through the same sorted `GlyphRange` array used by Compact mode.
+## Custom export ABI
 
-## Range and ABI contract
-
-The canonical ABI is defined in [`types.h`](types.h):
+The canonical full-Unicode ABI is defined in [`types.h`](types.h):
 
 ```cpp
 #define FONT_BITMAP_ABI_VERSION 2
 ```
 
-Generated custom headers verify this macro and fail compilation when used with an incompatible `types.h`.
+Generated headers contain `static const` arrays and may be included from multiple C or C++ translation units. They store:
 
-Custom fonts export:
+- packed bitmap data and its byte size;
+- glyph metadata;
+- optional Unicode range mappings;
+- glyph and range counts;
+- actual minimum and maximum code points;
+- bits per pixel and layout flags.
 
-- `const GlyphRange *ranges`;
-- `uint32_t bitmapSize`, initialized from the actual `sizeof(FontBitmaps)` array;
-- `uint32_t rangeCount`;
-- `uint32_t glyphCount`;
-- actual `codeFrom` and `codeTo`;
-- the exact layout type in `flags`.
+The bundled helpers provide validated lookup without allocation:
 
-Every generated font is deterministic and validated before export. Common validation checks supported `bpp`, exact flags, required pointers, Unicode bounds, ABI integer widths, and every glyph's `offset + packed bitmap bytes` against `bitmapSize`.
+```cpp
+static_assert(FONT_BITMAP_ABI_VERSION == 2, "Unsupported font ABI");
 
-Mode-specific validation additionally requires:
+if (!fontValid(&Roboto12ptCompact)) {
+    // Reject malformed font metadata.
+}
 
-- Dense: no range table and `glyphCount == codeTo - codeFrom + 1`;
-- Compact: sorted ranges fully cover offsets `0..glyphCount-1` without gaps;
-- ASCII first: direct slots `0..127`, no ASCII codes in extension ranges, and full extension coverage from offset 128;
-- duplicate/overlapping code ranges and glyph-offset intervals are rejected.
+const Glyph *glyph = fontGlyphForCode(&Roboto12ptCompact, codePoint);
+if (glyph) {
+    // Read the glyph bitmap from glyph->offset.
+}
+```
 
-Generated glyph comments always use the glyph's real Unicode code point rather than deriving it from an array index.
+`fontGlyphIndex()` performs fast slot lookup and may return a zero-placeholder slot in Dense and ASCII first layouts. `fontGlyphForCode()` returns `NULL` when the slot is absent.
 
-The bundled `types.h` provides:
+Consumers should decode UTF-8 into `uint32_t` Unicode code points. Visible empty glyphs such as spaces keep their advance while using zero bitmap width and height.
 
-- `Glyph`, with a verified 16-byte ABI;
-- `GlyphRange`, with a verified 12-byte ABI;
-- `Font` and layout flags;
-- `fontGlyphIndex()` for allocation-free slot lookup;
-- `fontGlyphPresent()` and `fontGlyphForCode()` for placeholder-aware lookup;
-- `fontValid()` for complete mode-aware runtime/debug validation;
+### compact16 profile
 
-## compact16 export profile
-
-Select **compact16 (BMP only)** in the **ABI profile** field when the target renderer uses only `U+0000..U+FFFF` and needs a smaller range table. This profile supports only the Compact glyph layout and includes [`types_compact16.h`](types_compact16.h).
-
-Its range ABI is:
+[`types_compact16.h`](types_compact16.h) defines a smaller BMP-only profile for Compact fonts:
 
 ```cpp
 typedef struct GlyphRange {
@@ -141,90 +126,25 @@ typedef struct GlyphRange {
     uint16_t codeTo;
     uint16_t glyphOffset;
 } GlyphRange;
-
-static_assert(sizeof(GlyphRange) == 6);
 ```
 
-`codeFrom` and `codeTo` are inclusive BMP boundaries. Glyphs inside a range are resolved with:
+`sizeof(GlyphRange)` is 6 bytes. Code points, glyph counts, range counts, and glyph offsets are limited to 16 bits; bitmap offsets and total bitmap size remain 32-bit.
 
-```cpp
-glyphIndex = range.glyphOffset + codePoint - range.codeFrom;
-```
+Choose `compact16` only when all required characters are in `U+0000..U+FFFF`. Supplementary Unicode is rejected.
 
-The profile stores `codeFrom`, `codeTo`, `rangeCount`, `glyphCount`, and `glyphOffset` as `uint16_t`; `Glyph.offset` and `Font.bitmapSize` remain `uint32_t`. It rejects supplementary Unicode above `U+FFFF`, non-Compact layouts, and more than 65,535 glyphs or ranges. Ranges remain sorted, non-overlapping, and must cover the full Compact glyph array without gaps.
+## Size and DPI
 
-The generated header checks `FONT_BITMAP_COMPACT16_ABI_VERSION`, and the compact16 lookup checks the first range before binary search.
-
-## C linkage
-
-Generated arrays and font objects are declared as `static const`. A generated header can therefore be included by multiple C or C++ translation units without linker multiple-definition errors.
-
-## Strict missing-glyph validation
-
-The converter always records the complete, sorted `missingCodePoints` list.
-
-In the browser, missing code points and Dense-layout warnings appear below the preview statistics. Enabling **Strict export** prevents a header from being downloaded when any selected glyph is absent. The `?` tooltip next to the option explains this behavior directly in the UI.
-
-In the CLI, `--strict` exits with an error and prints every missing code point. Without `--strict`, the header is generated and the missing list is written as a warning and as a comment in the header.
-
-## Font flags
-
-| Mask/value | Meaning |
-|---|---|
-| `0x01` | `FONT_FLAG_COMPACT` |
-| `0x00` | `FONT_RANGE_DENSE` |
-| `0x02` | `FONT_RANGE_COMPACT` |
-| `0x04` | `FONT_RANGE_ASCII_FIRST` |
-| `0x06` | `FONT_RANGE_MODE_MASK` |
-
-`FONT_FLAG_COMPACT` is set for Compact and ASCII first. Only the exact flag values `0x00`, `0x03`, and `0x05` are valid font modes. `0x06` is only the mode mask and is rejected as a font value. Flags are the sole source of runtime lookup behavior.
-
-Compact lookup checks the first range directly before binary-searching the remaining table. This keeps the common first ASCII range fast without changing the range ABI.
-
-## Custom format integration
-
-Copy `types.h` into the same directory as generated custom font headers:
-
-```cpp
-static_assert(FONT_BITMAP_ABI_VERSION == 2, "Unsupported font ABI");
-
-if (!fontValid(&Roboto12ptCompact)) {
-    // Reject malformed metadata before rendering.
-}
-
-const int32_t slot = fontGlyphIndex(&Roboto12ptCompact, codepoint);
-// Dense and ASCII-first lookup can return an allocated zero-placeholder slot.
-const Glyph *glyph = fontGlyphForCode(&Roboto12ptCompact, codepoint);
-if (glyph) {
-    // Read ceil(width × height × bpp / 8) bytes from glyph->offset.
-    // fontValid() guarantees the read remains inside bitmapSize.
-}
-```
-
-Consumers must decode UTF-8 into `uint32_t` Unicode code points. A `uint16_t` UTF-8 API cannot address supplementary characters above `U+FFFF`.
-
-Supported glyphs with no visible bitmap, such as a space, retain their `advanceX` and use zero width and height. The canonical absent placeholder is exactly `{0, 0, 0, 0, 0, 0}`; `fontGlyphIndex()` may return its slot, while `fontGlyphForCode()` returns `NULL`.
-
-## Memory statistics
-
-The preview and generated header report these values separately:
-
-- bitmap bytes;
-- glyph count and glyph bytes;
-- range count and range bytes;
-- total size, calculated as bitmap bytes + glyph bytes + range bytes.
-
-Custom estimates use the bundled ABI sizes:
+Raster dimensions are calculated as:
 
 ```text
-sizeof(Glyph)      = 16 bytes
-sizeof(GlyphRange) = 12 bytes   // Unicode32 ABI v2
-sizeof(GlyphRange) = 6 bytes    // compact16 profile
+pixels = floor(size × DPI / 96)
 ```
 
-## Headless CLI
+The default DPI is 222 for Custom output and 141 for Adafruit output. The UI and CLI allow the DPI to be configured where applicable.
 
-Install dependencies and run the included command:
+## Command-line usage
+
+The CLI uses the same generator as the browser version.
 
 ```bash
 npm install
@@ -233,15 +153,13 @@ npm run cli -- \
   --size 20 \
   --bpp 1 \
   --layout compact \
-  --profile compact16 \
+  --profile unicode32 \
   --charset-file ./charset.txt \
   --strict \
   --output ./font.h
 ```
 
-The UTF-8 charset file is interpreted as a set of literal Unicode characters. An initial BOM and line breaks are ignored, so the file can be maintained as readable lines. Spaces and other non-line-break characters remain part of the charset.
-
-Available options:
+Options:
 
 ```text
 --font PATH
@@ -258,55 +176,25 @@ Available options:
 --allow-large-dense
 ```
 
-The CLI defaults to Compact and the Unicode32 profile. `--profile compact16` requires Compact layout and rejects every selected code point above `U+FFFF`. Adafruit output supports only 1 bpp and Dense layout.
+The UTF-8 charset file contains literal characters. A leading BOM and line breaks are ignored; spaces and other characters remain part of the set.
 
-## Adafruit GFX
+The CLI defaults to Compact and the Unicode32 profile. Adafruit output supports only 1 bpp and Dense layout.
 
-Select **Adafruit** to generate a standard `GFXfont` header. Adafruit export always uses Dense because the external `GFXfont` structure has no range pointer, range count, glyph count, flags, or ABI version fields.
+### Optional native Canvas
 
-## Development
+The browser version does not use `@napi-rs/canvas`. The package is an optional dependency required only for CLI rasterization and Node.js raster tests.
 
-Requirements:
-
-- Node.js 18 or newer;
-- npm;
-- a C/C++ compiler for generated-header integration tests.
-
-Install dependencies and start the development server:
+Install it with normal optional dependencies:
 
 ```bash
-npm install
-npm run serve
+npm install --include=optional
 ```
 
-Create a production bundle:
-
-```bash
-npm run bundle
-```
-
-Run unit, range, CLI, rasterization, ABI, compile, and two-translation-unit linkage tests:
-
-```bash
-npm test
-```
-
-## Query parameters
-
-| Parameter | Type | Description |
-|---|---|---|
-| `text` | string | Default preview text |
-| `fontSize` | number | Font size entered in the UI |
-| `fontFamily` | string | Default font name |
-| `exportFormat` | string | Export format, for example `Adafruit` or `Custom 4bpp` |
-| `exportRange` | string | Named or custom glyph range |
-| `rangeMode` | string | `dense`, `compact`, or `ascii-first` |
-| `abiProfile` | string | `unicode32` or `compact16` |
-| `exportSizes` | comma-separated numbers | Sizes used by **Get All Fonts** |
+When it is unavailable, browser development still works and Canvas-dependent tests are skipped.
 
 ## Custom range syntax
 
-Use semicolons to separate ranges and individual symbols:
+Separate entries with semicolons:
 
 ```text
 A-Z;a-z;0x410-0x44f;0x401;0x451;0x1f600
@@ -314,16 +202,40 @@ A-Z;a-z;0x410-0x44f;0x401;0x451;0x1f600
 
 Supported forms:
 
-- Literal range: `a-z`
-- Literal characters: `abcABC .,!`
-- Hexadecimal range: `0xa0-0xb1`
-- Individual hexadecimal code point: `0x1f600`
-- Escaped separator/range characters: `\;`, `\-`, `\\`
+- literal range: `a-z`
+- literal characters: `abcABC .,!`
+- hexadecimal range: `0xa0-0xb1`
+- hexadecimal code point: `0x1f600`
+- escaped special characters: `\;`, `\-`, `\\`
+
+## URL parameters
+
+The web application accepts optional query parameters:
+
+| Parameter | Description |
+|---|---|
+| `text` | Initial preview text |
+| `fontSize` | Initial font size |
+| `fontFamily` | Built-in font name |
+| `exportFormat` | Export format, such as `Adafruit` or `Custom 4bpp` |
+| `exportRange` | Named preset or custom range |
+| `rangeMode` | `dense`, `compact`, or `ascii-first` |
+| `abiProfile` | `unicode32` or `compact16` |
+| `exportSizes` | Comma-separated sizes for **Get All Fonts** |
+
+## Development
+
+Requirements: Node.js 18 or newer, npm, and a C/C++ compiler for header integration tests.
+
+```bash
+npm install       # install dependencies; does not build
+npm run serve     # development server
+npm test          # tests only; bundle validation runs in memory
+npm run bundle    # create the production bundle
+```
+
+`npm install` and `npm test` do not create the `bundle/` directory.
 
 ## License
 
 [GPL-3.0](LICENSE)
-
-## Optional native Canvas dependency
-
-The browser converter does not require `@napi-rs/canvas`. It is an optional dependency loaded dynamically by the headless CLI. Install optional dependencies with `npm install --include=optional` before using the CLI.

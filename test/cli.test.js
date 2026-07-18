@@ -9,9 +9,25 @@ import assert from "node:assert/strict";
 import {mkdtemp, readFile, rm, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
 
 import opentype from "opentype.js";
+
+import {convertFontToBitmap, setCanvasFactory} from "../src/bitmap.js";
+import {ExportFormats} from "../src/defs.js";
+import {renderFontHeader} from "../src/export.js";
+import {RangeMode} from "../src/range.js";
+import {loadOptionalCanvas, nativeCanvasSkipReason} from "./helpers/optional_canvas.js";
+
+const {parse: parseOpenType} = opentype;
+const canvasModule = await loadOptionalCanvas();
+const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
+const canvasTest = (name, callback) => test(
+    name,
+    {skip: nativeCanvasSkipReason(canvasModule)},
+    callback
+);
 
 
 test("native canvas is optional and loaded only by the headless CLI", async () => {
@@ -25,7 +41,7 @@ test("native canvas is optional and loaded only by the headless CLI", async () =
     assert.match(cliSource, /browser converter does not require this package/i);
 });
 
-test("CLI generates a strict Compact header from a UTF-8 charset file", async () => {
+canvasTest("CLI generates a strict Compact header from a UTF-8 charset file", async () => {
     const directory = await mkdtemp(join(tmpdir(), "font2bitmap-cli-"));
     try {
         const fontPath = join(directory, "astral.ttf");
@@ -35,7 +51,7 @@ test("CLI generates a strict Compact header from a UTF-8 charset file", async ()
         await writeFile(charsetPath, `\uFEFF${String.fromCodePoint(0x1f600)}\n`, "utf8");
 
         const run = spawnSync(process.execPath, [
-            new URL("../src/cli.js", import.meta.url).pathname,
+            cliPath,
             "--font", fontPath,
             "--size", "12",
             "--bpp", "1",
@@ -57,7 +73,7 @@ test("CLI generates a strict Compact header from a UTF-8 charset file", async ()
             "utf8"
         );
         const strictFailure = spawnSync(process.execPath, [
-            new URL("../src/cli.js", import.meta.url).pathname,
+            cliPath,
             "--font", fontPath,
             "--size", "12",
             "--bpp", "1",
@@ -73,7 +89,7 @@ test("CLI generates a strict Compact header from a UTF-8 charset file", async ()
     }
 });
 
-test("CLI generates compact16 BMP headers and rejects supplementary Unicode", async () => {
+canvasTest("CLI generates compact16 BMP headers and rejects supplementary Unicode", async () => {
     const directory = await mkdtemp(join(tmpdir(), "font2bitmap-cli-compact16-"));
     try {
         const fontPath = join(directory, "font.ttf");
@@ -83,7 +99,7 @@ test("CLI generates compact16 BMP headers and rejects supplementary Unicode", as
         await writeFile(charsetPath, "A", "utf8");
 
         const success = spawnSync(process.execPath, [
-            new URL("../src/cli.js", import.meta.url).pathname,
+            cliPath,
             "--font", fontPath,
             "--size", "12",
             "--bpp", "1",
@@ -100,7 +116,7 @@ test("CLI generates compact16 BMP headers and rejects supplementary Unicode", as
 
         await writeFile(charsetPath, String.fromCodePoint(0x1f600), "utf8");
         const failure = spawnSync(process.execPath, [
-            new URL("../src/cli.js", import.meta.url).pathname,
+            cliPath,
             "--font", fontPath,
             "--size", "12",
             "--layout", "compact",
@@ -112,6 +128,69 @@ test("CLI generates compact16 BMP headers and rejects supplementary Unicode", as
         assert.match(failure.stderr, /compact16 supports BMP code points only/);
     } finally {
         await rm(directory, {recursive: true, force: true});
+    }
+});
+
+canvasTest("CLI output matches the desktop golden fixtures", async t => {
+    setCanvasFactory(() => canvasModule.createCanvas(1, 1));
+
+    const fixtureDirectory = new URL("./fixtures/cli-desktop-parity/", import.meta.url);
+    const fontPath = fileURLToPath(new URL("../fonts/JetBrainsMono-Regular.ttf", import.meta.url));
+    const charsetPath = fileURLToPath(new URL("charset.txt", fixtureDirectory));
+    const charset = await readFile(new URL("charset.txt", fixtureDirectory), "utf8");
+    const fontBytes = await readFile(fontPath);
+    const fontBuffer = fontBytes.buffer.slice(
+        fontBytes.byteOffset,
+        fontBytes.byteOffset + fontBytes.byteLength
+    );
+    const fontFace = parseOpenType(fontBuffer);
+
+    const cases = [
+        {bpp: 1, fixture: "JetBrainsMono14ptCompact.h"},
+        {bpp: 4, fixture: "JetBrainsMono14ptb4Compact.h"},
+        {bpp: 8, fixture: "JetBrainsMono14ptb8Compact.h"},
+    ];
+
+    for (const fixtureCase of cases) {
+        await t.test(`${fixtureCase.bpp} bpp`, async () => {
+            const expected = await readFile(new URL(fixtureCase.fixture, fixtureDirectory), "utf8");
+            const format = ExportFormats[`Custom ${fixtureCase.bpp}bpp`];
+            const desktopFont = convertFontToBitmap(fontFace, "JetBrainsMono", 14, {
+                charSet: charset,
+                rangeMode: RangeMode.COMPACT,
+                bpp: fixtureCase.bpp,
+                dpi: format.dpi,
+                dpiBase: format.dpiBase,
+                floorRasterSize: format.floorRasterSize,
+                strict: true,
+                abiProfile: format.abiProfile,
+            });
+            const desktop = renderFontHeader(desktopFont, {
+                format,
+                bpp: fixtureCase.bpp,
+            }).content;
+            assert.equal(desktop, expected, "desktop fixture no longer matches the browser/core generator");
+
+            const directory = await mkdtemp(join(tmpdir(), "font2bitmap-cli-parity-"));
+            try {
+                const outputPath = join(directory, fixtureCase.fixture);
+                const run = spawnSync(process.execPath, [
+                    cliPath,
+                    "--font", fontPath,
+                    "--name", "JetBrainsMono",
+                    "--size", "14",
+                    "--bpp", String(fixtureCase.bpp),
+                    "--layout", "compact",
+                    "--charset-file", charsetPath,
+                    "--strict",
+                    "--output", outputPath,
+                ], {encoding: "utf8"});
+                assert.equal(run.status, 0, run.stderr || run.stdout);
+                assert.equal(await readFile(outputPath, "utf8"), expected);
+            } finally {
+                await rm(directory, {recursive: true, force: true});
+            }
+        });
     }
 });
 

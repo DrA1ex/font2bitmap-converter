@@ -11,13 +11,15 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {spawnSync} from "node:child_process";
 
-import {createCanvas} from "@napi-rs/canvas";
 import opentype from "opentype.js";
 
 import {convertFontToBitmap, setCanvasFactory} from "../src/bitmap.js";
 import {renderFontHeader} from "../src/export.js";
 import {ExportFormats} from "../src/defs.js";
 import {FontFlags, RangeMode} from "../src/range.js";
+import {loadOptionalCanvas, nativeCanvasSkipReason} from "./helpers/optional_canvas.js";
+
+const canvasModule = await loadOptionalCanvas();
 
 const compilers = [
     {command: "cc", standard: "c11", source: "main.c"},
@@ -132,13 +134,15 @@ int main(void) { return first_lookup() == 0 && second_lookup() == 2 ? 0 : 1; }
     }
 });
 
-test("supplementary Unicode glyph rasterizes, exports, compiles, and resolves", async t => {
+test("supplementary Unicode glyph rasterizes, exports, compiles, and resolves", {
+    skip: nativeCanvasSkipReason(canvasModule),
+}, async t => {
     if (!compilerAvailable("cc")) {
         t.skip("cc is not installed");
         return;
     }
 
-    setCanvasFactory(() => createCanvas(1, 1));
+    setCanvasFactory(() => canvasModule.createCanvas(1, 1));
     const codePoint = 0x1f600;
     const font = convertFontToBitmap(createSupplementaryFont(), "Astral", 12, {
         charSet: String.fromCodePoint(codePoint),

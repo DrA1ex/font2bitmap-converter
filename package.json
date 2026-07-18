@@ -4,11 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prepare": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/; ln -sf ../icons ./bundle/",
-    "serve": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --format=esm --servedir=./bundle --watch",
-    "bundle": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --format=esm",
-    "test:unit": "node --test ./test/*.test.js",
-    "test": "npm run test:unit && npm run bundle",
+    "bundle:assets": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/; ln -sf ../icons ./bundle/",
+    "serve": "npm run bundle:assets && esbuild --bundle ./src/index.js --outdir=./bundle --format=esm --servedir=./bundle --watch",
+    "bundle": "npm run bundle:assets && esbuild --bundle ./src/index.js --outdir=./bundle --format=esm",
+    "test": "node --test ./test/*.test.js",
     "cli": "node ./src/cli.js"
   },
   "author": "Alexander K",

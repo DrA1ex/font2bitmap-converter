@@ -8,21 +8,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import opentype from "opentype.js";
-import {createCanvas} from "@napi-rs/canvas";
-
-import {MissingGlyphsError, convertFontToBitmap, resolveSelectedCodePoints} from "../src/bitmap.js";
+import {MissingGlyphsError, convertFontToBitmap, resolveSelectedCodePoints, setCanvasFactory} from "../src/bitmap.js";
 import {ASCII_GLYPH_COUNT, RangeMode, glyphIndexForCode} from "../src/range.js";
 import {FontRanges} from "../src/defs.js";
+import {loadOptionalCanvas, nativeCanvasSkipReason} from "./helpers/optional_canvas.js";
 
 const {parse: parseOpenType} = opentype;
-
-globalThis.document = {
-    createElement(name) {
-        if (name !== "canvas") throw new Error(`Unexpected element: ${name}`);
-        return createCanvas(1, 1);
-    },
-};
-globalThis.alert = message => { throw new Error(message); };
+const canvasModule = await loadOptionalCanvas();
+if (canvasModule) setCanvasFactory(() => canvasModule.createCanvas(1, 1));
+const canvasTest = (name, callback) => test(
+    name,
+    {skip: nativeCanvasSkipReason(canvasModule)},
+    callback
+);
 
 const fontBytes = await readFile(new URL("../fonts/Roboto-Regular.ttf", import.meta.url));
 const fontBuffer = fontBytes.buffer.slice(
@@ -46,7 +44,7 @@ test("all range resolves only representable cmap entries", () => {
     assert.equal(codes.includes(0x0041), true);
 });
 
-test("all range remains available with Dense across large and surrogate gaps", () => {
+canvasTest("all range remains available with Dense across large and surrogate gaps", () => {
     const selectedCodes = resolveSelectedCodePoints(jetBrainsFace, FontRanges.all);
     const font = convertFontToBitmap(jetBrainsFace, "JetBrainsMono", 6, {
         charSet: FontRanges.all,
@@ -69,7 +67,7 @@ test("all range remains available with Dense across large and surrogate gaps", (
     assert.equal(font.glyphs[surrogateIndex].charCode, 0xd800);
 });
 
-test("Custom conversion preserves the original DPI sizing behavior", () => {
+canvasTest("Custom conversion preserves the original DPI sizing behavior", () => {
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: " fjÁ_",
         rangeMode: RangeMode.DENSE,
@@ -98,7 +96,7 @@ test("Custom conversion preserves the original DPI sizing behavior", () => {
     }
 });
 
-test("Adafruit conversion preserves the original preview sizing behavior", () => {
+canvasTest("Adafruit conversion preserves the original preview sizing behavior", () => {
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: "A",
         rangeMode: RangeMode.DENSE,
@@ -110,7 +108,7 @@ test("Adafruit conversion preserves the original preview sizing behavior", () =>
     assert.equal(font.rasterSize, Math.floor(12 * 141 / 96));
 });
 
-test("hinted path bounds preserve negative bearings instead of clipping", () => {
+canvasTest("hinted path bounds preserve negative bearings instead of clipping", () => {
     const font = convertFontToBitmap(face, "Roboto", 9, {
         charSet: "fj",
         rangeMode: RangeMode.COMPACT,
@@ -131,7 +129,7 @@ test("hinted path bounds preserve negative bearings instead of clipping", () => 
     }
 });
 
-test("ASCII first keeps direct ASCII indices and range-mapped extensions", () => {
+canvasTest("ASCII first keeps direct ASCII indices and range-mapped extensions", () => {
     const chars = " !AZ~ЁАБВабвё";
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: chars,
@@ -162,7 +160,7 @@ test("ASCII first keeps direct ASCII indices and range-mapped extensions", () =>
     }
 });
 
-test("fully compact mode emits supported glyphs and deterministic ranges", () => {
+canvasTest("fully compact mode emits supported glyphs and deterministic ranges", () => {
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: "AЖё",
         rangeMode: RangeMode.COMPACT,
@@ -183,7 +181,7 @@ test("fully compact mode emits supported glyphs and deterministic ranges", () =>
     assert.equal(glyphIndexForCode(font, "ё".codePointAt(0)), 2);
 });
 
-test("Dense trims unsupported edge glyphs and stores real code-point bounds", () => {
+canvasTest("Dense trims unsupported edge glyphs and stores real code-point bounds", () => {
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: "\u0001A\u007f",
         rangeMode: RangeMode.DENSE,
@@ -200,7 +198,7 @@ test("Dense trims unsupported edge glyphs and stores real code-point bounds", ()
 });
 
 
-test("strict conversion reports every missing code point in deterministic order", () => {
+canvasTest("strict conversion reports every missing code point in deterministic order", () => {
     const charset = String.fromCodePoint(0x10ffff) + "A" + String.fromCodePoint(0x1f600);
     const nonStrict = convertFontToBitmap(face, "Roboto", 12, {
         charSet: charset,
