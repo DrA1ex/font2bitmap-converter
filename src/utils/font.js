@@ -1,95 +1,92 @@
-// Font utils
+// Font loading utilities
 //
-// Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
+// Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
-import opentype from 'opentype.js'
+import opentype from "opentype.js";
 
+const {parse: parseOpenType} = opentype;
 import * as Bitmap from "../bitmap.js";
-
 import * as defs from "../defs.js";
 
 const FontCache = {
     fontName: null,
     fontSize: null,
-    options: {},
+    optionsKey: null,
     bitmapFont: null,
-}
+};
 
 export async function loadFont(family, size, options = {}) {
-    if (FontCache.fontName !== family
+    const optionsKey = stableOptionsKey(options);
+    if (
+        FontCache.fontName !== family
         || FontCache.fontSize !== size
-        || JSON.stringify(FontCache.options) !== JSON.stringify(options)
+        || FontCache.optionsKey !== optionsKey
         || !FontCache.bitmapFont
     ) {
-        //const fontFace = document.fonts.values().find(f => f.family === family);
-        //if (!fontFace) throw new Error(`Unknown font ${family}`)
+        const source = defs.UserFonts[family] || defs.BuiltinFonts[family];
+        if (!source) throw new Error(`Unknown font: ${family}`);
 
-        //await fontFace.load();
-
-        const font = defs.UserFonts[family] || defs.BuiltinFonts[family];
-        if (!font) throw new Error("Unknown font: " + family);
-
-        let fontFace = font;
-        if (typeof font === "string") {
-            defs.BuiltinFonts[family] = fontFace = await opentype.load(font);
+        let fontFace = source;
+        if (typeof source === "string") {
+            fontFace = await loadOpenTypeUrl(source);
+            defs.BuiltinFonts[family] = fontFace;
         }
 
+        const bitmapFont = Bitmap.convertFontToBitmap(fontFace, family, size, options);
         FontCache.fontName = family;
         FontCache.fontSize = size;
-        FontCache.options = options;
-        FontCache.fontFace = fontFace;
-        FontCache.bitmapFont = Bitmap.convertFontToBitmap(fontFace, family, size, options);
+        FontCache.optionsKey = optionsKey;
+        FontCache.bitmapFont = bitmapFont;
     }
 
-    return FontCache.bitmapFont
+    return FontCache.bitmapFont;
 }
 
 export async function importFont(file) {
     const buffer = await file.arrayBuffer();
 
     try {
-        const font = opentype.parse(buffer, null);
-        const fontName = font.names.fullName.en || file.name.split(".ttf").join("");
+        const font = parseOpenType(buffer);
+        const fontName = localizedName(font.names?.fullName)
+            || file.name.replace(/\.(ttf|otf|woff)$/i, "");
 
         if (defs.UserFonts[fontName] === undefined) {
             defs.UserFonts[fontName] = font;
             return {fontName, font};
         }
-    } catch (e) {
-        console.error(e);
+    } catch (error) {
+        console.error(error);
         alert("Unable to load font!");
     }
 
     return null;
 }
 
-export function getMetrics(fontFace, char, fontSize) {
-    const fontGlyph = fontFace.charToGlyph(char);
-    if (!fontGlyph || fontGlyph.unicode === undefined) return null;
+async function loadOpenTypeUrl(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Unable to load font ${url}: HTTP ${response.status}`);
+    }
 
-    const unitsPerEm = fontGlyph.path.unitsPerEm
-        || fontFace.charToGlyph('a')?.path.unitsPerEm
-        || fontFace.charToGlyph('0')?.path.unitsPerEm
-        || fontFace.glyphs.get(0)?.path.unitsPerEm;
+    return parseOpenType(await response.arrayBuffer());
+}
 
-    if (!unitsPerEm) return null;
+function localizedName(nameRecord) {
+    if (!nameRecord || typeof nameRecord !== "object") return null;
+    return nameRecord.en || Object.values(nameRecord).find(value => typeof value === "string") || null;
+}
 
-    const fontScale = fontSize / unitsPerEm;
-    const metrics = fontGlyph.getMetrics();
-
-    const result = {
-        xMin: Math.floor(metrics.xMin * fontScale),
-        xMax: Math.ceil(metrics.xMax * fontScale),
-        yMin: Math.floor(metrics.yMin * fontScale),
-        yMax: Math.ceil(metrics.yMax * fontScale),
-        leftSideBearing: Math.floor(metrics.leftSideBearing * fontScale),
-        advanceWidth: Math.round(fontGlyph.advanceWidth * fontScale)
-    };
-
-    result.width = Math.max(1, Math.abs(result.xMax) + Math.abs(result.xMin));
-    result.height = Math.max(1, Math.abs(result.yMax) + Math.abs(result.yMin));
-
-    return result;
+function stableOptionsKey(options) {
+    return JSON.stringify({
+        charSet: options.charSet,
+        rangeMode: options.rangeMode,
+        bpp: options.bpp,
+        dpi: options.dpi,
+        dpiBase: options.dpiBase,
+        floorRasterSize: options.floorRasterSize,
+        strict: options.strict,
+        allowLargeDense: options.allowLargeDense,
+    });
 }

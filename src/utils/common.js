@@ -1,6 +1,6 @@
 // Common utils
 //
-// Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
+// Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
@@ -12,7 +12,7 @@ const TokenRe = `(?:${HexTokenRe}|${EscapedTokenRe}|${OtherTokenRe})`;
 const SplitTokenRe = "(?:;|$)"
 
 const RangePatternRe = new RegExp(
-    `(${TokenRe})(-${TokenRe}(?=${SplitTokenRe}))?${SplitTokenRe}?`, "g"
+    `(${TokenRe})(-${TokenRe}(?=${SplitTokenRe}))?${SplitTokenRe}?`, "gu"
 )
 
 export function capitalize(str) {
@@ -41,10 +41,12 @@ export function generateString(...pairs) {
     for (let i = 0; i < pairs.length; i += 2) {
         const [from, to] = pairs.slice(i, i + 2);
 
-        result += new Array(to.charCodeAt() - from.charCodeAt() + 1)
-            .fill(0)
-            .map((_, i) => String.fromCharCode(from.charCodeAt() + i))
-            .join("");
+        const fromCode = from.codePointAt(0);
+        const toCode = to.codePointAt(0);
+        result += Array.from(
+            {length: toCode - fromCode + 1},
+            (_, i) => String.fromCodePoint(fromCode + i)
+        ).join("");
     }
 
     return result;
@@ -86,11 +88,13 @@ export function parseRange(rangeStr) {
 
     // Function to process a range (e.g., a-z, 0xa0-0xb1)
     function processRange(start, end) {
-        const startCode = isHex(start) ? parseInt(start, 16) : start.charCodeAt(0);
-        const endCode = isHex(end) ? parseInt(end, 16) : end.charCodeAt(0);
+        const startCode = isHex(start) ? parseInt(start, 16) : start.codePointAt(0);
+        const endCode = isHex(end) ? parseInt(end, 16) : end.codePointAt(0);
+
+        if (!isValidCodePoint(startCode) || !isValidCodePoint(endCode) || startCode > endCode) return;
 
         for (let i = startCode; i <= endCode; i++) {
-            results.add(String.fromCharCode(i));
+            if (isValidCodePoint(i)) results.add(String.fromCodePoint(i));
         }
     }
 
@@ -98,7 +102,8 @@ export function parseRange(rangeStr) {
     function processSymbol(symbol) {
         if (isHex(symbol)) {
             // If it's a character code in hex, convert to string
-            results.add(String.fromCharCode(parseInt(symbol, 16)));
+            const code = parseInt(symbol, 16);
+            if (isValidCodePoint(code)) results.add(String.fromCodePoint(code));
         } else {
             // Otherwise, it's a literal character
             results.add(symbol);
@@ -108,6 +113,11 @@ export function parseRange(rangeStr) {
     // Helper function to check if a string is a hex code
     function isHex(str) {
         return /^0x[0-9a-fA-F]+$/.test(str);
+    }
+
+    function isValidCodePoint(code) {
+        return Number.isInteger(code) && code >= 0 && code <= 0x10ffff
+            && !(code >= 0xd800 && code <= 0xdfff);
     }
 
     for (const match of rangeStr.matchAll(RangePatternRe)) {

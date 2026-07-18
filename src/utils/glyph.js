@@ -1,66 +1,55 @@
-// Glyph utils
+// Glyph bitmap utilities
 //
-// Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
+// Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
+import {PackedImageWriter} from "../misc/image_writer.js";
 
-import {PackedImageWriter} from "../misc/image_writer";
+/**
+ * Finds the smallest rectangle containing pixels that remain visible after
+ * quantization. Returns null when the glyph has no visible bitmap pixels.
+ */
+export function calculateContentBounds(alpha, width, height, bpp) {
+    let left = width;
+    let top = height;
+    let right = -1;
+    let bottom = -1;
 
+    for (let y = 0; y < height; ++y) {
+        for (let x = 0; x < width; ++x) {
+            if (PackedImageWriter.convertPixel(alpha[y * width + x], bpp) === 0) continue;
 
-export function trimGlyph(glyph, emptyLeft, emptyRight, emptyTop, emptyBottom) {
-    glyph.height = Math.max(1, glyph.height - emptyTop - emptyBottom);
-    glyph.width = Math.max(1, glyph.width - emptyLeft - emptyRight);
-    glyph.offsetY += emptyTop;
-    glyph.offsetX += emptyLeft;
-}
+            left = Math.min(left, x);
+            top = Math.min(top, y);
+            right = Math.max(right, x);
+            bottom = Math.max(bottom, y);
+        }
+    }
 
-export function calculateEmptySpace(imageData, canvasWidth, canvasHeight, bpp) {
+    if (right < left || bottom < top) return null;
+
     return {
-        emptyTop: countEmptyRows(imageData, canvasWidth, canvasHeight, bpp, 1),
-        emptyBottom: countEmptyRows(imageData, canvasWidth, canvasHeight, bpp, -1),
-        emptyLeft: countEmptyCols(imageData, canvasWidth, canvasHeight, bpp, 1),
-        emptyRight: countEmptyCols(imageData, canvasWidth, canvasHeight, bpp, -1),
-    }
+        left,
+        top,
+        right,
+        bottom,
+        width: right - left + 1,
+        height: bottom - top + 1,
+    };
 }
 
-
-function countEmptyRows(imageData, width, height, bpp, step) {
-    let count = 0;
-    for (let y = step > 0 ? 0 : height - 1; y >= 0 && y < height; y += step) {
-        let rowEmpty = true;
-
-        for (let x = 0; x < width; x++) {
-            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
-            if (PackedImageWriter.convertPixel(alpha, bpp) > 0) {
-                rowEmpty = false;
-                break;
-            }
-        }
-
-        if (!rowEmpty) break;
-        ++count;
+export function applyContentBounds(glyph, bounds) {
+    if (!bounds) {
+        glyph.width = 0;
+        glyph.height = 0;
+        glyph.offsetX = 0;
+        glyph.offsetY = 0;
+        return;
     }
 
-    return count;
-}
-
-function countEmptyCols(imageData, width, height, bpp, step) {
-    let count = 0;
-    for (let x = step > 0 ? 0 : width - 1; x >= 0 && x < width; x += step) {
-        let colEmpty = true;
-
-        for (let y = 0; y < height; y++) {
-            const alpha = imageData.data[(y * imageData.width + x) * 4 + 3]
-            if (PackedImageWriter.convertPixel(alpha, bpp) > 0) {
-                colEmpty = false;
-                break;
-            }
-        }
-
-        if (!colEmpty) break;
-        ++count;
-    }
-
-    return count;
+    glyph.width = bounds.width;
+    glyph.height = bounds.height;
+    glyph.offsetX += bounds.left;
+    glyph.offsetY += bounds.top;
 }

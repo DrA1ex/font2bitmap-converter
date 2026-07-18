@@ -1,9 +1,9 @@
 <!--
 *
 * Bitmap generation app
-* 
-* Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
-* 
+*
+* Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
+*
 * This file may be distributed under the terms of the GNU GPLv3 license
 -->
 
@@ -22,52 +22,64 @@
 
 <body>
 <div class="container">
-    <div class="header">
-        TrueType to Bitmap Font Converter
-    </div>
+    <div class="header">TrueType to Bitmap Font Converter</div>
 
     <div class="block font">
-        <h3>Font</h3>
-        <select id="font-select">
-        </select>
-
-        <br><br>
-
+        <div class="field">
+            <h3>Font</h3>
+            <select id="font-select"></select>
+        </div>
         <button id="upload-font">Upload</button>
     </div>
 
     <div class="block parameters">
-        <h3>Font Size</h3>
-        <input type="number" id="size-field" value="20" min="1">
+        <div class="fields">
+            <div class="field">
+                <h3>Font Size (pt)</h3>
+                <input type="number" id="size-field" value="20" min="1" step="0.5">
+            </div>
 
-        <br><br>
+            <div class="field">
+                <h3>Demo text</h3>
+                <input type="text" id="text-field" value="Hello, World!">
+            </div>
 
-        <h3>Demo text</h3>
-        <input type="text" id="text-field" value="Hello, World!">
+            <div class="field">
+                <h3>Glyphs range</h3>
+                <select id="range-select"></select>
+                <input type="text" id="custom-range-field" placeholder="0-9;a-z;0x410-0x44f" hidden>
+            </div>
 
-        <br><br>
+            <div class="field">
+                <h3>Export format</h3>
+                <select id="format-select"></select>
+            </div>
 
-        <h3>Glyphs range</h3>
-        <select id="range-select">
-        </select>
-        <br id="custom-range-break" hidden>
-        <input type="text" id="custom-range-field" placeholder="0-9;a-z;0x410-0x44f" hidden>
+            <div class="field" id="abi-profile-field">
+                <h3>ABI profile</h3>
+                <select id="abi-profile-select"></select>
+            </div>
 
-        <br><br>
+            <div class="field">
+                <h3>Glyph layout</h3>
+                <select id="range-mode-select"></select>
+            </div>
 
-        <h3>Export format</h3>
-        <select id="format-select">
-        </select>
+            <div class="strict-row">
+                <label class="strict-option" for="strict-field">
+                    <input type="checkbox" id="strict-field">
+                    <span>Strict export</span>
+                </label>
+                <span class="help-tip" tabindex="0" role="note"
+                      aria-label="Strict export stops generation when the selected font is missing any requested glyph."
+                      data-tooltip="Stops export if any selected code point is missing from the font. Without strict mode, missing glyphs are listed and skipped.">?</span>
+            </div>
+        </div>
 
-        <br><br>
-
-        <label class="checkbox-label"><input type="checkbox" id="compact-field"> compact</label>
-
-        <br><br>
-
-        <button id="get-font">Get Font File</button>
-        <br/>
-        <button id="get-all-fonts">Get All Fonts</button>
+        <div class="actions">
+            <button id="get-font">Get Font File</button>
+            <button id="get-all-fonts">Get All Fonts</button>
+        </div>
     </div>
 
     <div class="block preview">
@@ -76,6 +88,7 @@
 
     <div class="block stats">
         <div id="stats"></div>
+        <div id="issues" role="status" hidden></div>
     </div>
 </div>
 

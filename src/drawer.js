@@ -1,11 +1,12 @@
 // Bitmap font drawer
 //
-// Copyright (C) 2025, Alexander K <https://github.com/drA1ex>
+// Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
 
-import * as CommonUtils from "./utils/common";
+import * as CommonUtils from "./utils/common.js";
+import {glyphIndexForCode} from "./range.js";
 
 export class TextDrawer {
     /** @type {CanvasRenderingContext2D} **/
@@ -70,8 +71,7 @@ export class TextDrawer {
         }
 
         // Draw text
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
+        for (const ch of text) {
             if (ch === '\n') {
                 this.breakLine();
             } else {
@@ -99,15 +99,14 @@ export class TextDrawer {
         const scaleX = this.#scaleX;
         const scaleY = this.#scaleY;
 
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
+        for (const ch of text) {
             if (ch === '\n') {
                 cursorY += font.advanceY * scaleY;
                 cursorX = this.#positionX;
                 continue;
             }
 
-            const glyph = this._glyphByCode(ch.charCodeAt(0));
+            const glyph = this._glyphByCode(ch.codePointAt(0));
             if (!glyph) continue;
 
             const left = cursorX + glyph.offsetX * scaleX;
@@ -115,12 +114,13 @@ export class TextDrawer {
             const right = left + glyph.width * scaleX;
             const bottom = top + glyph.height * scaleY;
 
-            boundary.left = Math.min(boundary.left, left);
+            const advanceRight = cursorX + glyph.advanceX * scaleX;
+            boundary.left = Math.min(boundary.left, left, cursorX);
             boundary.top = Math.min(boundary.top, top);
-            boundary.right = Math.max(boundary.right, right);
+            boundary.right = Math.max(boundary.right, right, advanceRight);
             boundary.bottom = Math.max(boundary.bottom, bottom);
 
-            cursorX += glyph.advanceX * scaleX;
+            cursorX = advanceRight;
         }
 
         // Handle empty text case
@@ -144,9 +144,8 @@ export class TextDrawer {
         this.#ctx.save();
 
         let lineCharIndex = 0;
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            const code = ch.charCodeAt(0);
+        for (const ch of text) {
+            const code = ch.codePointAt(0);
 
             if (ch === '\n') {
                 this.#ctx.fillStyle = "red";
@@ -231,7 +230,7 @@ export class TextDrawer {
     }
 
     _drawChar(ch) {
-        const glyph = this._glyphByCode(ch.charCodeAt(0));
+        const glyph = this._glyphByCode(ch.codePointAt(0));
         if (!glyph) return;
 
         const font = this.font();
@@ -262,14 +261,9 @@ export class TextDrawer {
 
     _glyphByCode(code) {
         const font = this.font();
-
-        if (font.compact) {
-            return font.glyphs.find(g => g.charCode === code) || null;
-        }
-
-        if (code < font.codeFrom || code > font.codeTo) return null;
-
-        return font.glyphs[code - font.codeFrom] || null;
+        const index = glyphIndexForCode(font, code);
+        if (index < 0 || index >= font.glyphs.length) return null;
+        return font.glyphs[index] || null;
     }
 
     _fillRect(x, y, w, h, color) {

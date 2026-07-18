@@ -1,19 +1,29 @@
 {
   "name": "font-converter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "prepare": "mkdir -p ./bundle; ln -nf ./src/*.html ./bundle; ln -nf ./src/*.css ./bundle; ln -sf ../fonts ./bundle/; ln -sf ../icons ./bundle/",
     "serve": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --format=esm --servedir=./bundle --watch",
-    "bundle": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --format=esm"
+    "bundle": "npm run prepare; npx esbuild --bundle ./src/index.js --outdir=./bundle --format=esm",
+    "test:unit": "node --test ./test/*.test.js",
+    "test": "npm run test:unit && npm run bundle",
+    "cli": "node ./src/cli.js"
   },
   "author": "Alexander K",
   "license": "GPL-3.0",
   "dependencies": {
-    "opentype.js": "^1.3.4"
+    "opentype.js": "2.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
+  },
+  "type": "module",
+  "bin": {
+    "font2bitmap": "./src/cli.js"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas": "^1.0.2"
   }
 }
