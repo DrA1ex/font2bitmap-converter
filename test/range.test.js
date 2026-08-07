@@ -356,9 +356,9 @@ test("custom export writes explicit sorted GlyphRange records and unambiguous co
     const {content} = renderFontHeader(font, {format, bpp: 1});
 
     assert.match(content, /static const GlyphRange Example12ptAsciiFirstRanges\[\]/);
-    assert.match(content, /\{ 0x0401, 0x0401, 128 \}, \/\/ U\+0401 -> glyph\[128\] \(1 glyph\)/);
-    assert.match(content, /\{ 0x0410, 0x044f, 129 \}, \/\/ U\+0410-U\+044F -> glyphs\[129\.\.192\] \(64 glyphs\)/);
-    assert.match(content, /\{ 0x0451, 0x0451, 193 \}, \/\/ U\+0451 -> glyph\[193\] \(1 glyph\)/);
+    assert.ok(content.includes("    { 0x0401, 0x0401, 128 }, // U+0401         -> glyph[128]        (1 glyph)"));
+    assert.ok(content.includes("    { 0x0410, 0x044f, 129 }, // U+0410-U+044F  -> glyphs[129..192]  (64 glyphs)"));
+    assert.ok(content.includes("    { 0x0451, 0x0451, 193 }, // U+0451         -> glyph[193]        (1 glyph)"));
     assert.match(content, /Example12ptAsciiFirstRanges,/);
     assert.match(content, /3, 194,/);
     assert.match(content, /14, 1, 0x05, \/\/ ASCII first/);

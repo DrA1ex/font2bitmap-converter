@@ -108,8 +108,8 @@ static const Glyph JetBrainsMono14ptb4CompactGlyphs[] = {
 // Font.flags stores the exact glyph layout type.
 // Each sorted record maps an inclusive Unicode range to a contiguous glyph-index interval.
 static const GlyphRange JetBrainsMono14ptb4CompactRanges[] = {
-    { 0x31, 0x33, 0 }, // U+0031-U+0033 -> glyphs[0..2] (3 glyphs)
-    { 0x61, 0x63, 3 }, // U+0061-U+0063 -> glyphs[3..5] (3 glyphs)
+    { 0x31, 0x33, 0 }, // U+0031-U+0033  -> glyphs[0..2]  (3 glyphs)
+    { 0x61, 0x63, 3 }, // U+0061-U+0063  -> glyphs[3..5]  (3 glyphs)
 };
 
 static const Font JetBrainsMono14ptb4Compact = {
