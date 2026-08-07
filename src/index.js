@@ -15,6 +15,7 @@ import {
     FontRanges,
     FontRangeLabels,
     ExportFormats,
+    BppOptions,
     AbiProfileOptions,
     RangeModeOptions,
     resolveExportFormat,
@@ -66,7 +67,14 @@ const queryParams = new URLSearchParams(window.location.search);
 const DefaultText = queryParams.get("text");
 const DefaultFontSize = Number.parseFloat(queryParams.get("fontSize") || 0);
 const DefaultFontFamily = queryParams.get("fontFamily");
-const DefaultExportFormat = queryParams.get("exportFormat");
+let DefaultExportFormat = queryParams.get("exportFormat");
+let DefaultBpp = Number.parseInt(queryParams.get("bpp") || "1", 10);
+const LegacyCustomFormat = /^Custom ([1248])bpp$/.exec(DefaultExportFormat || "");
+if (LegacyCustomFormat) {
+    DefaultExportFormat = "Custom";
+    DefaultBpp = Number.parseInt(LegacyCustomFormat[1], 10);
+}
+if (!BppOptions.includes(DefaultBpp)) DefaultBpp = 1;
 const DefaultRangeMode = normalizeRangeMode(queryParams.get("rangeMode"));
 const DefaultAbiProfile = normalizeFontAbiProfile(queryParams.get("abiProfile"));
 const ExportSizes = (queryParams.get("exportSizes") || "").split(",")
@@ -206,9 +214,14 @@ function getBaseExportFormat() {
 }
 
 function getExportFormat() {
-    const format = getBaseExportFormat();
+    const baseFormat = getBaseExportFormat();
     const profile = document.getElementById("abi-profile-select").value;
-    return resolveExportFormat(format, profile);
+    const format = resolveExportFormat(baseFormat, profile);
+    const usesBpp = baseFormat.kind === "custom" || baseFormat.kind === "typer";
+    const bpp = usesBpp
+        ? Number.parseInt(document.getElementById("bpp-select").value, 10)
+        : baseFormat.bpp;
+    return {...format, bpp};
 }
 
 function getFontOptions() {
@@ -602,6 +615,15 @@ function drawScaleLabel(scale, boundary) {
     Context.restore();
 }
 
+function updateBppAvailability() {
+    const baseFormat = getBaseExportFormat();
+    const field = document.getElementById("bpp-field");
+    const select = document.getElementById("bpp-select");
+    const usesBpp = baseFormat.kind === "custom" || baseFormat.kind === "typer";
+    field.hidden = !usesBpp;
+    select.disabled = !usesBpp;
+}
+
 function updateAbiProfileAvailability() {
     const baseFormat = getBaseExportFormat();
     const field = document.getElementById("abi-profile-field");
@@ -658,6 +680,12 @@ function updateCustomRangeField() {
 initSelect("font-select", Object.keys(BuiltinFonts), DefaultFontFamily);
 initSelect("range-select", Object.keys(FontRanges), DefaultExportRange, FontRangeLabels);
 initSelect("format-select", Object.keys(ExportFormats), DefaultExportFormat);
+initSelect("bpp-select", BppOptions.map(String), String(DefaultBpp), {
+    "1": "1 bpp",
+    "2": "2 bpp",
+    "4": "4 bpp",
+    "8": "8 bpp",
+});
 initMappedSelect("abi-profile-select", AbiProfileOptions, DefaultAbiProfile);
 initMappedSelect("range-mode-select", RangeModeOptions, DefaultRangeMode || RangeMode.DENSE);
 
@@ -665,6 +693,7 @@ if (DefaultFontSize) document.getElementById("size-field").value = DefaultFontSi
 if (DefaultText) document.getElementById("text-field").value = DefaultText;
 if (DefaultCustomRange) document.getElementById("custom-range-field").value = DefaultCustomRange;
 updateCustomRangeField();
+updateBppAvailability();
 updateAbiProfileAvailability();
 updateRangeModeAvailability();
 resizePreviewCanvas(true);
@@ -678,10 +707,13 @@ document.getElementById("range-select").addEventListener("change", () => {
 });
 document.getElementById("custom-range-field").addEventListener("input", () => scheduleRefresh());
 document.getElementById("format-select").addEventListener("change", () => {
+    updateBppAvailability();
     updateAbiProfileAvailability();
     updateRangeModeAvailability();
     scheduleRefresh();
 });
+
+document.getElementById("bpp-select").addEventListener("change", scheduleRefresh);
 document.getElementById("abi-profile-select").addEventListener("change", () => {
     updateRangeModeAvailability();
     scheduleRefresh();

@@ -114,6 +114,8 @@ export const Scales = [1, 2, 3, 4];
 export const PreviewSymbolsCount = 5;
 export const FontBitmapAbiVersion = 2;
 export const FontBitmapCompact16AbiVersion = 1;
+export const FontBitmapExtendedAbiVersion = 1;
+export const FontBitmapExtendedCompact16AbiVersion = 1;
 
 export const AbiProfileOptions = {
     "Unicode32 (full Unicode)": FontAbiProfile.UNICODE32,
@@ -136,6 +138,7 @@ function memoryUsage(font, glyphAbiSize, rangeAbiSize = 0) {
 
 const CustomFormatBase = {
     kind: "custom",
+    extended: false,
     abiProfile: FontAbiProfile.UNICODE32,
     abiProfileLabel: "Unicode32",
     dpi: 222,
@@ -175,6 +178,25 @@ const CustomFormatBase = {
     },
 };
 
+const CustomExtendedFormatBase = {
+    ...CustomFormatBase,
+    extended: true,
+    header: `#pragma once\n\n#include "./types_extended.h"\n\n#if FONT_BITMAP_EXTENDED_ABI_VERSION != ${FontBitmapExtendedAbiVersion}\n#error "Incompatible extended font bitmap ABI: expected version ${FontBitmapExtendedAbiVersion}"\n#endif\n`,
+    declarationsFont: [
+        "static const Font %fontKey% = {",
+        `    \"%fontDisplayName%\",`,
+        `    %fontKey%Bitmaps,`,
+        `    %fontKey%Glyphs,`,
+        `    %rangePointer%,`,
+        `    (uint32_t) sizeof(%fontKey%Bitmaps),`,
+        `    %codeFrom%, %codeTo%,`,
+        `    %rangeCount%, %glyphCount%,`,
+        `    %advanceY%, %bpp%, %flags%, // %rangeModeName%`,
+        `    { %ascent%, %descent%, %inkTop%, %inkBottom% },`,
+        "};",
+    ],
+};
+
 const Compact16Overrides = {
     abiProfile: FontAbiProfile.COMPACT16,
     abiProfileLabel: "compact16",
@@ -195,11 +217,32 @@ const Compact16Overrides = {
     ],
 };
 
+const Compact16ExtendedOverrides = {
+    ...Compact16Overrides,
+    header: `#pragma once\n\n#include "./types_extended_compact16.h"\n\n#if FONT_BITMAP_EXTENDED_COMPACT16_ABI_VERSION != ${FontBitmapExtendedCompact16AbiVersion}\n#error "Incompatible extended compact16 font bitmap ABI: expected version ${FontBitmapExtendedCompact16AbiVersion}"\n#endif\n`,
+    declarationsFont: [
+        "static const Font %fontKey% = {",
+        `    \"%fontDisplayName%\",`,
+        `    %fontKey%Bitmaps,`,
+        `    %fontKey%Glyphs,`,
+        `    %rangePointer%,`,
+        `    (uint32_t) sizeof(%fontKey%Bitmaps),`,
+        `    (uint16_t) %codeFrom%, (uint16_t) %codeTo%,`,
+        `    (uint16_t) %rangeCount%, (uint16_t) %glyphCount%,`,
+        `    %advanceY%, %bpp%, %flags%, // Compact / compact16`,
+        `    { %ascent%, %descent%, %inkTop%, %inkBottom% },`,
+        "};",
+    ],
+};
+
 export function resolveExportFormat(format, profile = FontAbiProfile.UNICODE32) {
     if (!format || format.kind !== "custom") return format;
     profile = normalizeFontAbiProfile(profile);
     if (profile === FontAbiProfile.UNICODE32) return format;
-    return {...format, ...Compact16Overrides};
+    return {
+        ...format,
+        ...(format.extended ? Compact16ExtendedOverrides : Compact16Overrides),
+    };
 }
 
 export const ExportFormats = {
@@ -235,20 +278,65 @@ export const ExportFormats = {
         },
     },
 
-    "Custom 1bpp": {
+    Custom: {
+        ...CustomFormatBase,
         bpp: 1,
-        ...CustomFormatBase,
     },
-    "Custom 2bpp": {
-        bpp: 2,
-        ...CustomFormatBase,
+    "Custom Extended": {
+        ...CustomExtendedFormatBase,
+        bpp: 1,
     },
-    "Custom 4bpp": {
-        bpp: 4,
-        ...CustomFormatBase,
-    },
-    "Custom 8bpp": {
-        bpp: 8,
-        ...CustomFormatBase,
+    Typer: {
+        kind: "typer",
+        extended: true,
+        abiProfile: FontAbiProfile.COMPACT16,
+        abiProfileLabel: "Typer",
+        metricAbi: "full16",
+        bpp: 1,
+        dpi: 222,
+        dpiBase: 96,
+        floorRasterSize: true,
+        supportedRangeModes: [RangeMode.COMPACT],
+        glyphAbiSize: 16,
+        rangeAbiSize: GLYPH_RANGE_COMPACT16_ABI_SIZE,
+
+        align: "    ",
+        maxRowSize: 80,
+
+        header: `#pragma once\n\n#include "./types_typer.h"\n`,
+        declarationBitmaps: "static const uint8_t %fontKey%Bitmaps[] = {",
+        declarationGlyphs: "static const Glyph %fontKey%Glyphs[] = {",
+        declarationRanges: "static const GlyphRange %fontKey%Ranges[] = {",
+        entryGlyph: "{ %offset%, %width%, %height%, %advanceX%, %offsetX%, %offsetY% },",
+        commentGlyph: " // %charCode%\t'%char%'\t%name%",
+        emptyGlyph: "{ 0, 0, 0, 0, 0, 0 },",
+        entryRange: "{ %rangeCodeFrom%, %rangeCodeTo%, %glyphOffset% },",
+        declarationsFont: [
+            "static const Font %fontKey% = {",
+            `    "%fontDisplayName%",`,
+            `    %fontKey%Bitmaps,`,
+            `    %fontKey%Glyphs,`,
+            `    %rangePointer%,`,
+            `    %bpp%,`,
+            `    (uint16_t) %codeFrom%, (uint16_t) %codeTo%,`,
+            `    %advanceY%,`,
+            `    (uint16_t) %rangeCount%, (uint16_t) %glyphCount%,`,
+            `    { %ascent%, %descent%, %inkTop%, %inkBottom% },`,
+            "};",
+        ],
+        memory(font) {
+            return memoryUsage(font, this.glyphAbiSize, this.rangeAbiSize);
+        },
     },
 };
+
+export const BppOptions = [1, 2, 4, 8];
+
+// Keep the old programmatic format keys available without exposing them as
+// separate UI choices. Existing callers can still request Custom 1/2/4/8bpp.
+for (const bpp of BppOptions) {
+    Object.defineProperty(ExportFormats, `Custom ${bpp}bpp`, {
+        value: {...ExportFormats.Custom, bpp},
+        enumerable: false,
+    });
+}

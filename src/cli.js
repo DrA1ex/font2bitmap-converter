@@ -171,7 +171,9 @@ function validateArguments(args) {
     }
     if (!Number.isFinite(args.size) || args.size <= 0) throw new Error("--size must be greater than zero");
     if (![1, 2, 4, 8].includes(args.bpp)) throw new Error("--bpp must be 1, 2, 4, or 8");
-    if (!["custom", "adafruit"].includes(args.format)) throw new Error("--format must be custom or adafruit");
+    if (!["custom", "custom-extended", "typer", "adafruit"].includes(args.format)) {
+        throw new Error("--format must be custom, custom-extended, typer, or adafruit");
+    }
     args.profile = normalizeFontAbiProfile(args.profile);
     if (!Object.values(RangeMode).includes(args.layout)) {
         throw new Error("--layout must be dense, compact, or ascii-first");
@@ -191,13 +193,18 @@ function validateArguments(args) {
     if (args.profile === FontAbiProfile.COMPACT16 && args.layout !== RangeMode.COMPACT) {
         throw new Error("compact16 supports only --layout compact");
     }
+    if (args.format === "typer" && args.layout !== RangeMode.COMPACT) {
+        throw new Error("Typer export supports only the Compact layout");
+    }
 }
 
 function resolveFormat(args) {
     if (args.format === "adafruit") return ExportFormats.Adafruit;
-    const format = ExportFormats[`Custom ${args.bpp}bpp`];
-    if (!format) throw new Error(`No Custom export format for ${args.bpp} bpp`);
-    return resolveExportFormat(format, args.profile);
+    if (args.format === "typer") return {...ExportFormats.Typer, bpp: args.bpp};
+    const baseFormat = args.format === "custom-extended"
+        ? ExportFormats["Custom Extended"]
+        : ExportFormats.Custom;
+    return {...resolveExportFormat(baseFormat, args.profile), bpp: args.bpp};
 }
 
 function normalizeCharsetFile(value) {
@@ -221,7 +228,7 @@ function helpText() {
         + `  --layout MODE           dense, compact, or ascii-first (default: compact)\n`
         + `  --profile PROFILE       unicode32 or compact16 (default: unicode32)\n`
         + `  --strict                Fail when any selected code point is missing\n`
-        + `  --format FORMAT         custom or adafruit (default: custom)\n`
+        + `  --format FORMAT         custom, custom-extended, typer, or adafruit (default: custom)\n`
         + `  --dpi NUMBER            Override the selected format DPI\n`
         + `  --name NAME             Override the exported font name\n`
         + `  --allow-large-dense     Allow Dense spans above the safety limit\n`

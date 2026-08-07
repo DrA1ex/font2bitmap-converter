@@ -97,12 +97,12 @@ static const uint8_t JetBrainsMono14ptb4CompactBitmaps[] = {
 };
 
 static const Glyph JetBrainsMono14ptb4CompactGlyphs[] = {
-    { 0, 16, 24, 19, 2, -24 }, // 0x31	'1'	one
-    { 192, 15, 24, 19, 2, -24 }, // 0x32	'2'	two
-    { 372, 15, 25, 19, 2, -24 }, // 0x33	'3'	three
-    { 560, 15, 19, 19, 2, -18 }, // 0x61	'a'	a
-    { 703, 15, 25, 19, 2, -24 }, // 0x62	'b'	b
-    { 891, 15, 19, 19, 2, -18 }, // 0x63	'c'	c
+    { 0, 16, 24, 19, 2, -24 },   // 0x31  '1'  one
+    { 192, 15, 24, 19, 2, -24 }, // 0x32  '2'  two
+    { 372, 15, 25, 19, 2, -24 }, // 0x33  '3'  three
+    { 560, 15, 19, 19, 2, -18 }, // 0x61  'a'  a
+    { 703, 15, 25, 19, 2, -24 }, // 0x62  'b'  b
+    { 891, 15, 19, 19, 2, -18 }, // 0x63  'c'  c
 };
 
 // Font.flags stores the exact glyph layout type.

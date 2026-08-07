@@ -86,6 +86,7 @@ function stableOptionsKey(options) {
         dpi: options.dpi,
         dpiBase: options.dpiBase,
         floorRasterSize: options.floorRasterSize,
+        abiProfile: options.abiProfile,
         strict: options.strict,
         allowLargeDense: options.allowLargeDense,
     });

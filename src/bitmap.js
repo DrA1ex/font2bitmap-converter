@@ -48,6 +48,12 @@ export class Font {
     codeFrom = 0;
     codeTo = 0;
     advanceY = 0;
+    metrics = {
+        ascent: 0,
+        descent: 0,
+        inkTop: 0,
+        inkBottom: 0,
+    };
     pointSize = 0;
     rasterSize = 0;
     dpi = 0;
@@ -254,6 +260,7 @@ export function convertFontToBitmap(
     result.rasterSize = rasterSize;
     result.dpi = Number(dpi);
     result.advanceY = calculateLineAdvance(fontFace, rasterSize);
+    result.metrics = calculateFontMetrics(fontFace, rasterSize, glyphs);
     result.missingCodePoints = normalizedMissingCodePoints;
     result.warnings = [...(plan.warnings || [])];
 
@@ -378,6 +385,38 @@ function calculateLineAdvance(fontFace, rasterSize) {
     const descender = fontFace.descender ?? fontFace.tables?.hhea?.descender ?? 0;
     const lineGap = fontFace.tables?.hhea?.lineGap ?? 0;
     return Math.max(1, Math.ceil((ascender - descender + lineGap) * rasterSize / unitsPerEm));
+}
+
+export function calculateFontMetrics(fontFace, rasterSize, glyphs) {
+    const unitsPerEm = fontFace.unitsPerEm || 1000;
+    const ascender = fontFace.ascender ?? fontFace.tables?.hhea?.ascender ?? unitsPerEm;
+    const descender = fontFace.descender ?? fontFace.tables?.hhea?.descender ?? 0;
+
+    let hasInk = false;
+    let inkTop = 0;
+    let inkBottom = 0;
+    for (const glyph of glyphs) {
+        if (!glyph.present || glyph.width <= 0 || glyph.height <= 0) continue;
+        const glyphTop = glyph.offsetY;
+        const glyphBottom = glyph.offsetY + glyph.height;
+        if (!hasInk) {
+            inkTop = glyphTop;
+            inkBottom = glyphBottom;
+            hasInk = true;
+            continue;
+        }
+        inkTop = Math.min(inkTop, glyphTop);
+        inkBottom = Math.max(inkBottom, glyphBottom);
+    }
+
+    return {
+        // Store ascent/descent as positive baseline distances. Ink bounds stay
+        // baseline-relative in the same +Y-down coordinate system as Glyph.offsetY.
+        ascent: Math.max(0, Math.ceil(ascender * rasterSize / unitsPerEm)),
+        descent: Math.max(0, Math.ceil(-descender * rasterSize / unitsPerEm)),
+        inkTop,
+        inkBottom,
+    };
 }
 
 export function resolveSelectedCodePoints(fontFace, charSet) {

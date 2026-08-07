@@ -1,5 +1,5 @@
 /*
- * Compact BMP-only bitmap font ABI for constrained renderers.
+ * Extended compact BMP-only bitmap font ABI for constrained renderers.
  *
  * Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
  *
@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #endif
 
-#define FONT_BITMAP_COMPACT16_ABI_VERSION 1
+#define FONT_BITMAP_EXTENDED_COMPACT16_ABI_VERSION 1
 #define FONT_COMPACT16_UNICODE_MAX 0xffffu
 
 // compact16 supports only the Compact layout. Keeping the canonical flags
@@ -44,6 +44,16 @@ typedef struct {
 } GlyphRange;
 
 typedef struct {
+    // Compact positive baseline distances. Generation rejects overflow.
+    uint8_t ascent;
+    uint8_t descent;
+
+    // Compact baseline-relative exclusive ink envelope.
+    int8_t inkTop;
+    int8_t inkBottom;
+} FontMetrics;
+
+typedef struct {
     const char *name;
     const uint8_t *bitmaps;
     const Glyph *glyphs;
@@ -57,14 +67,17 @@ typedef struct {
     uint16_t advanceY;
     uint8_t bpp;
     uint8_t flags;
+    FontMetrics metrics;
 } Font;
 
 #if defined(__cplusplus)
 static_assert(sizeof(Glyph) == 16, "Glyph ABI must remain 16 bytes");
 static_assert(sizeof(GlyphRange) == 6, "compact16 GlyphRange ABI must remain 6 bytes");
+static_assert(sizeof(FontMetrics) == 4, "extended compact16 FontMetrics ABI must remain 4 bytes");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(Glyph) == 16, "Glyph ABI must remain 16 bytes");
 _Static_assert(sizeof(GlyphRange) == 6, "compact16 GlyphRange ABI must remain 6 bytes");
+_Static_assert(sizeof(FontMetrics) == 4, "extended compact16 FontMetrics ABI must remain 4 bytes");
 #endif
 
 static inline bool fontCodePointValid(uint32_t codepoint) {
@@ -104,9 +117,15 @@ static inline bool fontRangeValid(const GlyphRange *range) {
         && !(range->codeFrom < 0xd800u && range->codeTo > 0xdfffu);
 }
 
+static inline bool fontMetricsValid(const Font *font) {
+    if (!font) return false;
+    return font->metrics.inkTop <= font->metrics.inkBottom;
+}
+
 // Complete compact16 ABI validator. Ranges must be sorted, non-overlapping,
 // and cover glyph offsets 0..glyphCount-1 without gaps.
 static inline bool fontValid(const Font *font) {
+    if (!fontMetricsValid(font)) return false;
     if (!font || !font->name || !font->bitmaps || !font->glyphs || !font->ranges) return false;
     if (!fontBppValid(font->bpp) || font->flags != FONT_COMPACT16_FLAGS) return false;
     if (font->bitmapSize == 0u || font->glyphCount == 0u || font->rangeCount == 0u) return false;

@@ -1,5 +1,5 @@
 /*
- * Canonical bitmap font ABI shared by the converter and renderers.
+ * Extended bitmap font ABI shared by the converter and renderers.
  *
  * Copyright (C) 2025-2026, Alexander K <https://github.com/drA1ex>
  *
@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #endif
 
-#define FONT_BITMAP_ABI_VERSION 2
+#define FONT_BITMAP_EXTENDED_ABI_VERSION 1
 #define FONT_UNICODE_MAX 0x10ffffu
 #define FONT_ASCII_GLYPH_COUNT 128u
 
@@ -47,6 +47,16 @@ typedef struct {
 } GlyphRange;
 
 typedef struct {
+    // Positive pixel distances from the baseline used for stable line layout.
+    uint16_t ascent;
+    uint16_t descent;
+
+    // Baseline-relative exclusive pixel envelope of all exported glyph ink.
+    int16_t inkTop;
+    int16_t inkBottom;
+} FontMetrics;
+
+typedef struct {
     const char *name;
     const uint8_t *bitmaps;
     const Glyph *glyphs;
@@ -65,14 +75,17 @@ typedef struct {
     uint16_t advanceY;
     uint8_t bpp;
     uint8_t flags;
+    FontMetrics metrics;
 } Font;
 
 #if defined(__cplusplus)
 static_assert(sizeof(Glyph) == 16, "Glyph ABI must remain 16 bytes");
 static_assert(sizeof(GlyphRange) == 12, "GlyphRange ABI must remain 12 bytes");
+static_assert(sizeof(FontMetrics) == 8, "extended FontMetrics ABI must remain 8 bytes");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(Glyph) == 16, "Glyph ABI must remain 16 bytes");
 _Static_assert(sizeof(GlyphRange) == 12, "GlyphRange ABI must remain 12 bytes");
+_Static_assert(sizeof(FontMetrics) == 8, "extended FontMetrics ABI must remain 8 bytes");
 #endif
 
 static inline bool fontCodePointValid(uint32_t codepoint) {
@@ -183,9 +196,15 @@ static inline bool fontActualBoundsValid(const Font *font, uint8_t mode) {
     return found && actualFrom == font->codeFrom && actualTo == font->codeTo;
 }
 
+static inline bool fontMetricsValid(const Font *font) {
+    if (!font) return false;
+    return font->metrics.inkTop <= font->metrics.inkBottom;
+}
+
 // Mode-aware ABI validator. Intended for debug/startup validation; generated
 // headers are checked by the JavaScript exporter before they are emitted.
 static inline bool fontValid(const Font *font) {
+    if (!fontMetricsValid(font)) return false;
     if (!font || !font->name || !font->bitmaps || !font->glyphs) return false;
     if (!fontBppValid(font->bpp) || font->bitmapSize == 0u || font->glyphCount == 0u) return false;
     if (!fontCodePointValid(font->codeFrom) || !fontCodePointValid(font->codeTo)

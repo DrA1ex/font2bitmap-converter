@@ -29,12 +29,12 @@ static const uint8_t JetBrainsMono14ptCompactBitmaps[] = {
 };
 
 static const Glyph JetBrainsMono14ptCompactGlyphs[] = {
-    { 0, 14, 23, 19, 3, -23 }, // 0x31	'1'	one
-    { 41, 14, 24, 19, 3, -24 }, // 0x32	'2'	two
-    { 83, 14, 23, 19, 2, -23 }, // 0x33	'3'	three
-    { 124, 14, 18, 19, 2, -18 }, // 0x61	'a'	a
-    { 156, 13, 23, 19, 3, -23 }, // 0x62	'b'	b
-    { 194, 14, 18, 19, 3, -18 }, // 0x63	'c'	c
+    { 0, 14, 23, 19, 3, -23 },   // 0x31  '1'  one
+    { 41, 14, 24, 19, 3, -24 },  // 0x32  '2'  two
+    { 83, 14, 23, 19, 2, -23 },  // 0x33  '3'  three
+    { 124, 14, 18, 19, 2, -18 }, // 0x61  'a'  a
+    { 156, 13, 23, 19, 3, -23 }, // 0x62  'b'  b
+    { 194, 14, 18, 19, 3, -18 }, // 0x63  'c'  c
 };
 
 // Font.flags stores the exact glyph layout type.

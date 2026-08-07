@@ -363,7 +363,7 @@ test("custom export writes explicit sorted GlyphRange records and unambiguous co
     assert.match(content, /3, 194,/);
     assert.match(content, /14, 1, 0x05, \/\/ ASCII first/);
     assert.match(content, /0x0401\s+'Ё'\s+uni0401/);
-    assert.match(content, /0x7f not exported/);
+    assert.match(content, /0x7f.*not exported/);
     assert.match(content, /Ranges: 3 \(36 bytes, sizeof\(GlyphRange\) = 12\)/);
     assert.match(content, /Glyphs: 194 \(3104 bytes, sizeof\(Glyph\) = 16\)/);
 });

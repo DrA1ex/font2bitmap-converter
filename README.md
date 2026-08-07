@@ -9,7 +9,7 @@ A browser and command-line tool for converting TrueType/OpenType fonts into pack
 ## Features
 
 - Built-in Roboto and JetBrains Mono fonts, plus uploaded `.ttf`, `.otf`, and `.woff` files.
-- Custom bitmap output at 1, 2, 4, or 8 bits per pixel.
+- Legacy Custom and Custom Extended bitmap output at 1, 2, 4, or 8 bits per pixel.
 - Adafruit GFX output at 1 bit per pixel.
 - Dense, Compact, and ASCII first glyph layouts.
 - Unicode32 and BMP-only `compact16` ABI profiles.
@@ -22,7 +22,7 @@ A browser and command-line tool for converting TrueType/OpenType fonts into pack
 
 1. Select a built-in font or upload your own.
 2. Choose the font size, output format, and character set.
-3. Select a glyph layout and ABI profile when using a Custom format.
+3. For Custom formats, select bitmap depth, glyph layout, and ABI profile.
 4. Inspect the preview and memory statistics.
 5. Download one font or all configured sizes.
 
@@ -116,12 +116,38 @@ if (glyph) {
 
 Consumers should decode UTF-8 into `uint32_t` Unicode code points. Visible empty glyphs such as spaces keep their advance while using zero bitmap width and height.
 
+
+### Custom Extended metrics
+
+`Custom Extended` keeps the legacy Custom glyph and bitmap representation and adds one font-level metrics structure after the existing `Font` fields:
+
+```cpp
+typedef struct {
+    uint16_t ascent;
+    uint16_t descent;
+    int16_t inkTop;
+    int16_t inkBottom;
+} FontMetrics;
+```
+
+`ascent` and `descent` are positive baseline distances used for stable vertical layout. `inkTop` and `inkBottom` are baseline-relative bounds of the painted pixels across the exported glyph set, calculated once during generation from final glyph `offsetY` and `height` values.
+
+The Unicode32 extended ABI is defined in [`types_extended.h`](types_extended.h). The `compact16` extended ABI is defined in [`types_extended_compact16.h`](types_extended_compact16.h) and stores the same metrics as `uint8_t`, `uint8_t`, `int8_t`, and `int8_t`. Generation fails instead of truncating values when a compact metric does not fit its 8-bit range.
+
+Legacy `Custom` output continues to use `types.h` or `types_compact16.h` unchanged.
+
+### Typer format
+
+`Typer` is a compact BMP-oriented C++ export intended for the Typer UI renderer. It always uses the Compact range layout with 16-bit code points, range offsets, and counts, while keeping font metrics at full 16-bit precision. Its ABI is defined in [`types_typer.h`](types_typer.h).
+
+The format uses signed `int16_t` horizontal and vertical advances and const bitmap/glyph/range pointers. Generation rejects values that do not fit the Typer field widths rather than truncating them.
+
 ### compact16 profile
 
 [`types_compact16.h`](types_compact16.h) defines a smaller BMP-only profile for Compact fonts:
 
 ```cpp
-typedef struct GlyphRange {
+typedef struct {
     uint16_t codeFrom;
     uint16_t codeTo;
     uint16_t glyphOffset;
@@ -170,7 +196,7 @@ Options:
 --charset-file PATH
 --strict
 --output PATH
---format custom|adafruit
+--format custom|custom-extended|adafruit
 --dpi NUMBER
 --name NAME
 --allow-large-dense
@@ -217,7 +243,8 @@ The web application accepts optional query parameters:
 | `text` | Initial preview text |
 | `fontSize` | Initial font size |
 | `fontFamily` | Built-in font name |
-| `exportFormat` | Export format, such as `Adafruit` or `Custom 4bpp` |
+| `exportFormat` | `Adafruit`, `Custom`, or `Custom Extended` (legacy `Custom Nbpp` values are still accepted) |
+| `bpp` | Custom bitmap depth: `1`, `2`, `4`, or `8` |
 | `exportRange` | Named preset or custom range |
 | `rangeMode` | `dense`, `compact`, or `ascii-first` |
 | `abiProfile` | `unicode32` or `compact16` |
