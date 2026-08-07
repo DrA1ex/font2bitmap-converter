@@ -166,45 +166,66 @@ Raster dimensions are calculated as:
 pixels = floor(size × DPI / 96)
 ```
 
-The default DPI is 222 for Custom output and 141 for Adafruit output. The UI and CLI allow the DPI to be configured where applicable.
+The default DPI is 222 for Custom, Custom Extended, and Typer output, and 141 for Adafruit output. The CLI uses the same defaults as the web UI unless `--dpi` explicitly overrides them.
 
 ## Command-line usage
 
-The CLI uses the same generator as the browser version.
+The CLI uses the same generator, built-in fonts, range parser, and format DPI defaults as the browser version. `--font` accepts either a file path or a built-in font name. Character selection can come from either `--range` or `--charset-file`.
 
 ```bash
 npm install
 npm run cli -- \
+  --font JetBrainsMono \
+  --size 8 \
+  --format typer \
+  --bpp 4 \
+  --range ':russian:;:basic_european:' \
+  --strict \
+  --output ./JetBrainsMono8.h
+```
+
+A file-based invocation remains supported:
+
+```bash
+npm run cli -- \
   --font ./font.ttf \
   --size 20 \
-  --bpp 1 \
   --layout compact \
   --profile unicode32 \
   --charset-file ./charset.txt \
-  --strict \
   --output ./font.h
 ```
 
-Options:
+Core options:
 
 ```text
---font PATH
+--font FONT                    Built-in font name or TTF/OTF/WOFF path
 --size NUMBER
+--range EXPR                   Range expression; alternative to --charset-file
+--charset-file PATH            Literal UTF-8 charset; alternative to --range
+--output PATH                  Header path or - for stdout
+--format custom|custom-extended|typer|adafruit
 --bpp 1|2|4|8
 --layout dense|compact|ascii-first
 --profile unicode32|compact16
---charset-file PATH
+--dpi NUMBER                   Override the web-format DPI
 --strict
---output PATH
---format custom|custom-extended|typer|adafruit
---dpi NUMBER
 --name NAME
 --allow-large-dense
 ```
 
-The UTF-8 charset file contains literal characters. A leading BOM and line breaks are ignored; spaces and other characters remain part of the set.
+Built-in fonts are `Roboto`, `Roboto Bold`, `Roboto Thin`, `JetBrainsMono`, `JetBrainsMono Bold`, and `JetBrainsMono Thin`. Names are case-insensitive; quote names containing spaces.
 
-The CLI defaults to Compact and the Unicode32 profile. Adafruit output supports only 1 bpp and Dense layout.
+Format/layout/profile constraints match the web generator:
+
+- `custom` — legacy Custom ABI; `dense`, `compact`, or `ascii-first`; `unicode32` or `compact16` (the latter requires `compact`).
+- `custom-extended` — the same Custom choices plus font metrics.
+- `typer` — Typer ABI with fixed Compact layout and compact16/BMP ranges; BPP remains selectable.
+- `adafruit` — fixed Dense layout and 1 BPP.
+
+If `--dpi` is omitted, CLI rasterization uses exactly the same format default as the web UI: 222 DPI for Custom, Custom Extended, and Typer; 141 DPI for Adafruit. `--dpi` is only an explicit override.
+
+The UTF-8 charset file contains literal characters. A leading BOM and line breaks are ignored; spaces and other characters remain part of the set.
 
 ### Optional native Canvas
 

@@ -114,6 +114,8 @@ const NamedFontRanges = Object.freeze({
     full_slavic: FontRanges.fullSlavic,
 });
 
+export const NamedFontRangeNames = Object.freeze(Object.keys(NamedFontRanges));
+
 /**
  * Parses the Custom range field. In addition to the legacy literal/range
  * syntax, a whole semicolon-delimited token may reference a built-in preset:

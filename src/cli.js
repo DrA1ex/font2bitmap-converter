@@ -18,7 +18,13 @@ import {
     convertFontToBitmap,
     setCanvasFactory,
 } from "./bitmap.js";
-import {ExportFormats, resolveExportFormat} from "./defs.js";
+import {
+    BuiltinFonts,
+    ExportFormats,
+    NamedFontRangeNames,
+    parseFontRangeExpression,
+    resolveExportFormat,
+} from "./defs.js";
 import {renderFontHeader} from "./export.js";
 import {
     DenseSpanError,
@@ -62,29 +68,35 @@ export async function runCli(argv = process.argv.slice(2)) {
     }
 
     validateArguments(args);
-    await configureHeadlessCanvas();
 
-    const fontBytes = await readFile(args.font);
+    const charset = args.range !== undefined
+        ? parseFontRangeExpression(args.range)
+        : normalizeCharsetFile(await readFile(args.charsetFile, "utf8"));
+    if (Array.from(charset).length === 0) {
+        throw new Error(args.range !== undefined
+            ? "--range does not select any Unicode code points"
+            : "The charset file does not contain any Unicode code points");
+    }
+
+    const fontSource = resolveFontSource(args.font);
+    const fontBytes = await readFile(fontSource.path);
     const fontBuffer = fontBytes.buffer.slice(
         fontBytes.byteOffset,
         fontBytes.byteOffset + fontBytes.byteLength
     );
     const fontFace = parseOpenType(fontBuffer);
-    const charset = normalizeCharsetFile(await readFile(args.charsetFile, "utf8"));
-    if (Array.from(charset).length === 0) {
-        throw new Error("The charset file does not contain any Unicode code points");
-    }
-
     const format = resolveFormat(args);
     const rangeMode = normalizeRangeMode(args.layout);
     const fontName = args.name || localizedName(fontFace.names?.fullName)
-        || basename(args.font).replace(/\.(ttf|otf|woff2?)$/i, "");
+        || fontSource.builtinName
+        || basename(fontSource.path).replace(/\.(ttf|otf|woff2?)$/i, "");
 
+    await configureHeadlessCanvas();
     const font = convertFontToBitmap(fontFace, fontName, args.size, {
         charSet: charset,
         rangeMode,
         bpp: format.bpp,
-        dpi: args.dpi || format.dpi,
+        dpi: args.dpi ?? format.dpi,
         dpiBase: format.dpiBase,
         floorRasterSize: format.floorRasterSize,
         strict: args.strict,
@@ -119,6 +131,7 @@ function parseArguments(argv) {
         allowLargeDense: false,
         dpi: null,
         profile: FontAbiProfile.UNICODE32,
+        profileExplicit: false,
         help: false,
     };
 
@@ -149,10 +162,14 @@ function parseArguments(argv) {
                 result.layoutExplicit = true;
                 break;
             case "--charset-file": result.charsetFile = value; break;
+            case "--range": result.range = value; break;
             case "--output": result.output = value; break;
             case "--format": result.format = value.toLowerCase(); break;
             case "--dpi": result.dpi = Number(value); break;
-            case "--profile": result.profile = value.toLowerCase(); break;
+            case "--profile":
+                result.profile = value.toLowerCase();
+                result.profileExplicit = true;
+                break;
             default: throw new Error(`Unknown argument: ${argument}`);
         }
     }
@@ -164,10 +181,17 @@ function parseArguments(argv) {
 }
 
 function validateArguments(args) {
-    for (const key of ["font", "size", "charsetFile", "output"]) {
+    for (const key of ["font", "size", "output"]) {
         if (args[key] === undefined || args[key] === null || args[key] === "") {
             throw new Error(`Missing required option: --${key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`);
         }
+    }
+    const charsetSources = Number(args.charsetFile !== undefined) + Number(args.range !== undefined);
+    if (charsetSources === 0) {
+        throw new Error("Missing character selection: use either --range or --charset-file");
+    }
+    if (charsetSources > 1) {
+        throw new Error("Use either --range or --charset-file, not both");
     }
     if (!Number.isFinite(args.size) || args.size <= 0) throw new Error("--size must be greater than zero");
     if (![1, 2, 4, 8].includes(args.bpp)) throw new Error("--bpp must be 1, 2, 4, or 8");
@@ -187,14 +211,17 @@ function validateArguments(args) {
     if (args.format === "adafruit" && args.layout !== RangeMode.DENSE) {
         throw new Error("Adafruit export supports only the Dense layout");
     }
-    if (args.format === "adafruit" && args.profile !== FontAbiProfile.UNICODE32) {
-        throw new Error("Adafruit export does not use a Custom ABI profile");
+    if (args.format === "adafruit" && args.profileExplicit) {
+        throw new Error("--profile applies only to Custom formats; Adafruit has no Custom ABI profile");
     }
     if (args.profile === FontAbiProfile.COMPACT16 && args.layout !== RangeMode.COMPACT) {
         throw new Error("compact16 supports only --layout compact");
     }
     if (args.format === "typer" && args.layout !== RangeMode.COMPACT) {
         throw new Error("Typer export supports only the Compact layout");
+    }
+    if (args.format === "typer" && args.profileExplicit) {
+        throw new Error("--profile applies only to Custom formats; Typer already uses fixed compact16/BMP ranges");
     }
 }
 
@@ -216,23 +243,70 @@ function localizedName(nameRecord) {
     return nameRecord.en || Object.values(nameRecord).find(value => typeof value === "string") || null;
 }
 
+function resolveFontSource(value) {
+    const requested = String(value);
+    const builtinName = Object.keys(BuiltinFonts).find(
+        name => name.toLowerCase() === requested.toLowerCase()
+    );
+    if (!builtinName) return {path: requested, builtinName: null};
+
+    const relativePath = BuiltinFonts[builtinName].replace(/^\.\//, "");
+    return {
+        path: fileURLToPath(new URL(`../${relativePath}`, import.meta.url)),
+        builtinName,
+    };
+}
+
 function helpText() {
-    return `Usage: font2bitmap --font FONT --size PT --charset-file FILE --output HEADER [options]\n\n`
+    const builtinFonts = Object.keys(BuiltinFonts).map(name => `    ${name}`).join("\n");
+    const namedRanges = NamedFontRangeNames.map(name => `:${name}:`).join(", ");
+
+    return `Usage:\n`
+        + `  font2bitmap --font FONT --size PT (--range EXPR | --charset-file FILE) --output HEADER [options]\n\n`
         + `Required:\n`
-        + `  --font PATH             Input TTF/OTF/WOFF font\n`
+        + `  --font FONT             Built-in font name or path to TTF/OTF/WOFF font\n`
         + `  --size NUMBER           Font size entered by the converter\n`
-        + `  --charset-file PATH     UTF-8 characters to export; BOM and line breaks are ignored\n`
         + `  --output PATH           Generated header path, or - for stdout\n\n`
+        + `Character selection (choose exactly one):\n`
+        + `  --range EXPR            Glyph range expression using the web/custom syntax\n`
+        + `  --charset-file PATH     UTF-8 characters to export; BOM/newlines are ignored\n\n`
         + `Options:\n`
-        + `  --bpp 1|2|4|8           Custom output depth (default: 1)\n`
-        + `  --layout MODE           dense, compact, or ascii-first (default: compact)\n`
-        + `  --profile PROFILE       unicode32 or compact16 (default: unicode32)\n`
-        + `  --strict                Fail when any selected code point is missing\n`
         + `  --format FORMAT         custom, custom-extended, typer, or adafruit (default: custom)\n`
-        + `  --dpi NUMBER            Override the selected format DPI\n`
+        + `  --bpp 1|2|4|8           Bitmap depth for Custom/Typer formats (default: 1)\n`
+        + `  --layout MODE           dense, compact, or ascii-first (default: compact)\n`
+        + `  --profile PROFILE       unicode32 or compact16 (Custom default: unicode32)\n`
+        + `  --dpi NUMBER            Override the web-format DPI; omitted = same DPI as web UI\n`
         + `  --name NAME             Override the exported font name\n`
+        + `  --strict                Fail when any selected code point is missing\n`
         + `  --allow-large-dense     Allow Dense spans above the safety limit\n`
-        + `  --help                   Show this help\n`;
+        + `  --help                  Show this help\n\n`
+        + `Formats:\n`
+        + `  custom                  Legacy Custom ABI; layouts: dense, compact, ascii-first\n`
+        + `  custom-extended         Custom ABI + ascent/descent/ink bounds; same layouts\n`
+        + `  typer                   Typer ABI; fixed compact layout and compact16/BMP ranges\n`
+        + `  adafruit                Adafruit GFX output; fixed dense layout and 1 bpp\n\n`
+        + `Profiles (Custom formats):\n`
+        + `  unicode32               Full Unicode code points/ranges\n`
+        + `  compact16               BMP-only 16-bit ranges; requires compact layout\n\n`
+        + `Layouts:\n`
+        + `  dense                   One glyph slot for every code point in the selected span\n`
+        + `  compact                 Store only selected glyphs and map them with GlyphRange\n`
+        + `  ascii-first             Reserve glyph[0..127] for ASCII, then append extensions\n\n`
+        + `DPI defaults (same as web UI):\n`
+        + `  custom/custom-extended/typer: 222 DPI\n`
+        + `  adafruit:                       141 DPI\n`
+        + `  --dpi changes only this rasterization value.\n\n`
+        + `Built-in fonts (case-insensitive; quote names containing spaces):\n`
+        + `${builtinFonts}\n\n`
+        + `Range syntax:\n`
+        + `  Named ranges: ${namedRanges}\n`
+        + `  Combine with semicolons, for example :russian:;:basic_european:\n`
+        + `  Literal/hex forms are also accepted: A-Z;a-z;0x410-0x44f;0x20ac\n`
+        + `  Escape special characters as \\;, \\-, and \\\\.\n\n`
+        + `Examples:\n`
+        + `  font2bitmap --font JetBrainsMono --size 8 --format typer --bpp 4 --range ':russian:;:basic_european:' --output JetBrainsMono8.h\n`
+        + `  font2bitmap --font 'Roboto Bold' --size 20 --format custom-extended --layout compact --profile unicode32 --range ':default:' --output Roboto20.h\n`
+        + `  font2bitmap --font ./font.ttf --size 14 --charset-file ./charset.txt --dpi 180 --output ./font.h\n`;
 }
 
 function isDirectExecution() {

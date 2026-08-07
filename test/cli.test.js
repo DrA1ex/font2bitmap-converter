@@ -29,6 +29,58 @@ const canvasTest = (name, callback) => test(
     callback
 );
 
+test("CLI help documents built-ins, ranges, formats, layouts, profiles, and DPI defaults", () => {
+    const run = spawnSync(process.execPath, [cliPath, "--help"], {encoding: "utf8"});
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+
+    assert.match(run.stdout, /--font FONT\s+Built-in font name or path/);
+    assert.match(run.stdout, /--range EXPR/);
+    assert.match(run.stdout, /custom-extended/);
+    assert.match(run.stdout, /typer\s+Typer ABI; fixed compact layout and compact16\/BMP ranges/);
+    assert.match(run.stdout, /dense, compact, or ascii-first/);
+    assert.match(run.stdout, /unicode32 or compact16/);
+    assert.match(run.stdout, /custom\/custom-extended\/typer: 222 DPI/);
+    assert.match(run.stdout, /adafruit:\s+141 DPI/);
+    assert.match(run.stdout, /JetBrainsMono/);
+    assert.match(run.stdout, /Roboto Bold/);
+    assert.match(run.stdout, /:russian:/);
+    assert.match(run.stdout, /:basic_european:/);
+});
+
+test("CLI requires exactly one character-selection source", () => {
+    const missing = spawnSync(process.execPath, [
+        cliPath,
+        "--font", "JetBrainsMono",
+        "--size", "8",
+        "--output", "-",
+    ], {encoding: "utf8"});
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /use either --range or --charset-file/);
+
+    const both = spawnSync(process.execPath, [
+        cliPath,
+        "--font", "JetBrainsMono",
+        "--size", "8",
+        "--range", ":russian:",
+        "--charset-file", "charset.txt",
+        "--output", "-",
+    ], {encoding: "utf8"});
+    assert.equal(both.status, 1);
+    assert.match(both.stderr, /either --range or --charset-file, not both/);
+});
+
+test("CLI reports unknown named ranges before rasterization", () => {
+    const run = spawnSync(process.execPath, [
+        cliPath,
+        "--font", "JetBrainsMono",
+        "--size", "8",
+        "--range", ":does_not_exist:",
+        "--output", "-",
+    ], {encoding: "utf8"});
+    assert.equal(run.status, 1);
+    assert.match(run.stderr, /Unknown named glyph range: :does_not_exist:/);
+    assert.doesNotMatch(run.stderr, /@napi-rs\/canvas/);
+});
 
 test("native canvas is optional and loaded only by the headless CLI", async () => {
     const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -176,12 +228,12 @@ canvasTest("CLI output matches the desktop golden fixtures", async t => {
                 const outputPath = join(directory, fixtureCase.fixture);
                 const run = spawnSync(process.execPath, [
                     cliPath,
-                    "--font", fontPath,
+                    "--font", "JetBrainsMono",
                     "--name", "JetBrainsMono",
                     "--size", "14",
                     "--bpp", String(fixtureCase.bpp),
                     "--layout", "compact",
-                    "--charset-file", charsetPath,
+                    "--range", "1-3;a-c",
                     "--strict",
                     "--output", outputPath,
                 ], {encoding: "utf8"});
