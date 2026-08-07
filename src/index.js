@@ -14,6 +14,7 @@ import {
     UserFonts,
     FontRanges,
     FontRangeLabels,
+    parseFontRangeExpression,
     ExportFormats,
     BppOptions,
     AbiProfileOptions,
@@ -84,11 +85,17 @@ const ExportSizes = (queryParams.get("exportSizes") || "").split(",")
 let DefaultExportRange = queryParams.get("exportRange");
 let DefaultCustomRange = "";
 if (DefaultExportRange && !FontRanges[DefaultExportRange]) {
-    const parsedRange = CommonUtils.parseRange(DefaultExportRange);
-    if (parsedRange.length > 0) {
+    DefaultCustomRange = queryParams.get("exportRange");
+    try {
+        const parsedRange = parseFontRangeExpression(DefaultExportRange);
+        if (parsedRange.length > 0) {
+            DefaultExportRange = "custom";
+            FontRanges[DefaultExportRange] = parsedRange;
+        }
+    } catch {
+        // Keep the raw expression in the Custom field. Preview/export will
+        // surface the parser error through the normal issue UI.
         DefaultExportRange = "custom";
-        DefaultCustomRange = queryParams.get("exportRange");
-        FontRanges[DefaultExportRange] = parsedRange;
     }
 }
 FontRanges.custom ??= "";
@@ -163,9 +170,9 @@ function addFont(fontName) {
 async function downloadFont() {
     const fontName = getSelectedFont();
     const size = Number.parseFloat(document.getElementById("size-field").value);
-    const options = getFontOptions();
 
     try {
+        const options = getFontOptions();
         const {font} = await Export.exportFont(fontName, size, options);
         updateIssues(font);
     } catch (error) {
@@ -175,11 +182,11 @@ async function downloadFont() {
 }
 
 async function downloadAllFonts() {
-    const options = getFontOptions();
     const exportSizes = ExportSizes.length > 0 ? ExportSizes :
         [Number.parseFloat(document.getElementById("size-field").value)];
 
     try {
+        const options = getFontOptions();
         for (const fontName of Object.keys(BuiltinFonts).concat(Object.keys(UserFonts))) {
             for (const size of exportSizes) {
                 const {font} = await Export.exportFont(fontName, size, options);
@@ -200,7 +207,7 @@ function getFontRange() {
     const range = document.getElementById("range-select").value;
     if (range === "custom") {
         const customRange = document.getElementById("custom-range-field").value;
-        const parsedRange = CommonUtils.parseRange(customRange);
+        const parsedRange = parseFontRangeExpression(customRange);
         FontRanges.custom = parsedRange;
         return parsedRange || FontRanges.default;
     }
@@ -256,12 +263,12 @@ async function refreshPreview() {
     let text = document.getElementById("text-field").value;
     const selectedFont = getSelectedFont();
     const fontSize = Number.parseFloat(document.getElementById("size-field").value);
-    const options = getFontOptions();
-    const previewOptions = {...options, strict: false};
 
     PreviewBlock.setAttribute("busy", "true");
 
     try {
+        const options = getFontOptions();
+        const previewOptions = {...options, strict: false};
         const bitmapFont = await FontUtils.loadFont(selectedFont, fontSize, previewOptions);
         Drawer.setFont(bitmapFont);
 

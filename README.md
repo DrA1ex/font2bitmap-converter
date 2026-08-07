@@ -13,7 +13,7 @@ A browser and command-line tool for converting TrueType/OpenType fonts into pack
 - Adafruit GFX output at 1 bit per pixel.
 - Dense, Compact, and ASCII first glyph layouts.
 - Unicode32 and BMP-only `compact16` ABI profiles.
-- Built-in character presets and custom Unicode ranges.
+- Built-in character presets, composable named presets, and custom Unicode ranges.
 - Missing-glyph detection with an optional strict export mode.
 - Interactive preview with grid, glyph metrics, scaling, and a 5x/10x magnifier.
 - Headless CLI for reproducible font generation.
@@ -44,7 +44,7 @@ Every language preset contains the complete **Default** set plus its additional 
 - **Basic Slavic** — Russian plus the core Ukrainian `Є/є`, `І/і`, `Ї/ї`, `Ґ/ґ` and Belarusian `Ў/ў` letters.
 - **Full Slavic** — broad modern Slavic Cyrillic coverage.
 - **All** — every usable Unicode mapping exposed by the selected font.
-- **Custom** — a user-defined list of characters and ranges.
+- **Custom** — a user-defined list of characters, ranges, and named preset references.
 
 Missing characters depend on the selected font and are handled by strict/non-strict export.
 
@@ -196,7 +196,7 @@ Options:
 --charset-file PATH
 --strict
 --output PATH
---format custom|custom-extended|adafruit
+--format custom|custom-extended|typer|adafruit
 --dpi NUMBER
 --name NAME
 --allow-large-dense
@@ -228,11 +228,19 @@ A-Z;a-z;0x410-0x44f;0x401;0x451;0x1f600
 
 Supported forms:
 
+- named preset: `:russian:`, `:basic_european:`, `:basic_slavic:`
+- combined named presets: `:russian:;:basic_european:`
 - literal range: `a-z`
 - literal characters: `abcABC .,!`
 - hexadecimal range: `0xa0-0xb1`
 - hexadecimal code point: `0x1f600`
 - escaped special characters: `\;`, `\-`, `\\`
+
+Available named preset identifiers are `default`, `light`, `russian`,
+`basic_european`, `full_european`, `basic_slavic`, and `full_slavic`. Named
+presets may be mixed with literal/hex ranges. The merged character set is
+de-duplicated and sorted by Unicode code point before the selected glyph layout
+is built, so preset order does not affect glyph indices or range-table order.
 
 ## URL parameters
 
@@ -243,7 +251,7 @@ The web application accepts optional query parameters:
 | `text` | Initial preview text |
 | `fontSize` | Initial font size |
 | `fontFamily` | Built-in font name |
-| `exportFormat` | `Adafruit`, `Custom`, or `Custom Extended` (legacy `Custom Nbpp` values are still accepted) |
+| `exportFormat` | `Adafruit`, `Custom`, `Custom Extended`, or `Typer` (legacy `Custom Nbpp` values are still accepted) |
 | `bpp` | Custom bitmap depth: `1`, `2`, `4`, or `8` |
 | `exportRange` | Named preset or custom range |
 | `rangeMode` | `dense`, `compact`, or `ascii-first` |

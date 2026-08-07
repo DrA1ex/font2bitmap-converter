@@ -107,25 +107,32 @@ function renderRangeMetadata(font, exportFormat, placeholders) {
     }
 
     result += placeholders(exportFormat.declarationRanges) + "\n";
-    for (const range of font.ranges) {
+    const rows = font.ranges.map(range => {
+        const glyphCount = range.codeTo - range.codeFrom + 1;
+        const glyphTo = range.glyphOffset + glyphCount - 1;
+        return {
+            initializer: placeholders(exportFormat.entryRange, null, range),
+            codeSpan: range.codeFrom === range.codeTo
+                ? formatCodePoint(range.codeFrom)
+                : `${formatCodePoint(range.codeFrom)}-${formatCodePoint(range.codeTo)}`,
+            glyphSpan: glyphCount === 1
+                ? `glyph[${range.glyphOffset}]`
+                : `glyphs[${range.glyphOffset}..${glyphTo}]`,
+            count: `(${glyphCount} ${glyphCount === 1 ? "glyph" : "glyphs"})`,
+        };
+    });
+
+    const initializerWidth = Math.max(0, ...rows.map(row => row.initializer.length));
+    const codeSpanWidth = Math.max(0, ...rows.map(row => row.codeSpan.length));
+    const glyphSpanWidth = Math.max(0, ...rows.map(row => row.glyphSpan.length));
+
+    for (const row of rows) {
         result += exportFormat.align;
-        result += placeholders(exportFormat.entryRange, null, range);
-        result += renderRangeComment(range) + "\n";
+        result += row.initializer.padEnd(initializerWidth);
+        result += ` // ${row.codeSpan.padEnd(codeSpanWidth)}  -> ${row.glyphSpan.padEnd(glyphSpanWidth)}  ${row.count}\n`;
     }
     result += "};\n\n";
     return result;
-}
-
-function renderRangeComment(range) {
-    const glyphCount = range.codeTo - range.codeFrom + 1;
-    const glyphTo = range.glyphOffset + glyphCount - 1;
-    const codeSpan = range.codeFrom === range.codeTo
-        ? formatCodePoint(range.codeFrom)
-        : `${formatCodePoint(range.codeFrom)}-${formatCodePoint(range.codeTo)}`;
-    const glyphSpan = glyphCount === 1
-        ? `glyph[${range.glyphOffset}]`
-        : `glyphs[${range.glyphOffset}..${glyphTo}]`;
-    return ` // ${codeSpan} -> ${glyphSpan} (${glyphCount} ${glyphCount === 1 ? "glyph" : "glyphs"})`;
 }
 
 function renderMemorySummary(font, exportFormat) {

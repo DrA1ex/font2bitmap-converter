@@ -104,6 +104,74 @@ export const FontRangeLabels = {
     custom: "Custom",
 };
 
+const NamedFontRanges = Object.freeze({
+    default: FontRanges.default,
+    light: FontRanges.light,
+    russian: FontRanges.russian,
+    basic_european: FontRanges.basicEuropean,
+    full_european: FontRanges.fullEuropean,
+    basic_slavic: FontRanges.basicSlavic,
+    full_slavic: FontRanges.fullSlavic,
+});
+
+/**
+ * Parses the Custom range field. In addition to the legacy literal/range
+ * syntax, a whole semicolon-delimited token may reference a built-in preset:
+ *
+ *   :russian:;:basic_european:;0x20ac
+ *
+ * The result is de-duplicated and sorted by Unicode code point so named range
+ * order never leaks into glyph-array/range-table order.
+ */
+export function parseFontRangeExpression(expression) {
+    const charsets = [];
+    for (const token of splitRangeExpression(expression)) {
+        if (!token) continue;
+
+        const named = /^:([a-z][a-z0-9_]*):$/i.exec(token);
+        if (named) {
+            const name = named[1].toLowerCase();
+            const charset = NamedFontRanges[name];
+            if (charset === undefined) {
+                throw new RangeError(`Unknown named glyph range: :${name}:`);
+            }
+            charsets.push(charset);
+            continue;
+        }
+
+        charsets.push(CommonUtils.parseRange(token));
+    }
+    return mergeCharsets(...charsets);
+}
+
+function splitRangeExpression(expression) {
+    const tokens = [];
+    let token = "";
+    let escaped = false;
+
+    for (const char of String(expression || "")) {
+        if (escaped) {
+            token += `\\${char}`;
+            escaped = false;
+            continue;
+        }
+        if (char === "\\") {
+            escaped = true;
+            continue;
+        }
+        if (char === ";") {
+            tokens.push(token);
+            token = "";
+            continue;
+        }
+        token += char;
+    }
+
+    if (escaped) token += "\\";
+    tokens.push(token);
+    return tokens;
+}
+
 export const RangeModeOptions = {
     [RangeModeLabel[RangeMode.DENSE]]: RangeMode.DENSE,
     [RangeModeLabel[RangeMode.COMPACT]]: RangeMode.COMPACT,

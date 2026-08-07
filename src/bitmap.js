@@ -308,7 +308,7 @@ function renderGlyph(fontFace, charCode, rasterSize, bpp, buffer, canvas, contex
     if (width === 0 || height === 0) return glyph;
 
     const alpha = rasterizePath(path, left, top, width, height, canvas, context);
-    const bounds = GlyphUtils.calculateContentBounds(alpha, width, height, bpp);
+    const bounds = GlyphUtils.calculateContentBounds(alpha, width, height);
 
     glyph.offsetX = left;
     glyph.offsetY = top;

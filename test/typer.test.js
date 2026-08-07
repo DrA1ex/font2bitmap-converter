@@ -68,6 +68,18 @@ test("glyph comments form aligned initializer, code, character, and name columns
     assert.equal(new Set(parsed.map(row => row.nameColumn)).size, 1);
 });
 
+test("GlyphRange rows form aligned initializer and comment columns", () => {
+    const {content} = renderFontHeader(createFont(), {format: ExportFormats.Typer, bpp: 1});
+    const lines = content.split("\n").filter(line => /\/\/ U\+/.test(line));
+    assert.equal(lines.length, 2);
+
+    assert.equal(new Set(lines.map(line => line.indexOf("//"))).size, 1, lines.join("\n"));
+    assert.equal(new Set(lines.map(line => line.indexOf("->"))).size, 1, lines.join("\n"));
+    assert.equal(new Set(lines.map(line => line.indexOf("glyph"))).size, 1, lines.join("\n"));
+    assert.equal(new Set(lines.map(line => line.indexOf("("))).size, 1, lines.join("\n"));
+});
+
+
 test("Typer generated header compiles as C++17", async t => {
     if (spawnSync("c++", ["--version"], {stdio: "ignore"}).status !== 0) {
         t.skip("c++ is not installed");

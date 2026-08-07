@@ -4,13 +4,13 @@
 //
 // This file may be distributed under the terms of the GNU GPLv3 license
 
-import {PackedImageWriter} from "../misc/image_writer.js";
-
 /**
- * Finds the smallest rectangle containing pixels that remain visible after
- * quantization. Returns null when the glyph has no visible bitmap pixels.
+ * Finds the smallest rectangle containing source raster coverage. Bounds are
+ * intentionally independent of output BPP so glyph geometry remains stable
+ * when only bitmap quantization changes. Returns null when the glyph has no
+ * raster coverage.
  */
-export function calculateContentBounds(alpha, width, height, bpp) {
+export function calculateContentBounds(alpha, width, height) {
     let left = width;
     let top = height;
     let right = -1;
@@ -18,7 +18,7 @@ export function calculateContentBounds(alpha, width, height, bpp) {
 
     for (let y = 0; y < height; ++y) {
         for (let x = 0; x < width; ++x) {
-            if (PackedImageWriter.convertPixel(alpha[y * width + x], bpp) === 0) continue;
+            if (alpha[y * width + x] === 0) continue;
 
             left = Math.min(left, x);
             top = Math.min(top, y);

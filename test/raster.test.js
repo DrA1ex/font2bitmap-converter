@@ -96,6 +96,32 @@ canvasTest("Custom conversion preserves the original DPI sizing behavior", () =>
     }
 });
 
+
+canvasTest("JetBrains Mono glyph geometry is invariant across BPP", () => {
+    const options = {
+        charSet: "AgMWjy0123",
+        rangeMode: RangeMode.COMPACT,
+        dpi: 222,
+        dpiBase: 96,
+        floorRasterSize: true,
+    };
+
+    const font2 = convertFontToBitmap(jetBrainsFace, "JetBrainsMono", 8, {...options, bpp: 2});
+    const font4 = convertFontToBitmap(jetBrainsFace, "JetBrainsMono", 8, {...options, bpp: 4});
+
+    const geometry = font => font.glyphs.map(glyph => ({
+        charCode: glyph.charCode,
+        width: glyph.width,
+        height: glyph.height,
+        advanceX: glyph.advanceX,
+        offsetX: glyph.offsetX,
+        offsetY: glyph.offsetY,
+    }));
+
+    assert.deepEqual(geometry(font2), geometry(font4));
+    assert.deepEqual(font2.metrics, font4.metrics);
+});
+
 canvasTest("Adafruit conversion preserves the original preview sizing behavior", () => {
     const font = convertFontToBitmap(face, "Roboto", 12, {
         charSet: "A",
